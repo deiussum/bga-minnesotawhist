@@ -25,13 +25,13 @@ $gameinfos = array(
 'year' => 0,                 
 
 // Game publisher (use empty string if there is no publisher)
-'publisher' => 'Public Domain',                     
+'publisher' => '',                     
 
 // Url of game publisher website
 'publisher_website' => '',   
 
 // Board Game Geek ID of the publisher
-'publisher_bgg_id' => 0,
+'publisher_bgg_id' => 171,
 
 // Board game geek ID of the game
 'bgg_id' => 154537,

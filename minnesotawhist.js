@@ -18,7 +18,8 @@
 define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
-    "ebg/counter"
+    "ebg/counter",
+    "ebg/stock"
 ],
 function (dojo, declare) {
     return declare("bgagame.minnesotawhist", ebg.core.gamegui, {
@@ -28,6 +29,9 @@ function (dojo, declare) {
             // Here, you can init the global variables of your user interface
             // Example:
             // this.myGlobalValue = 0;
+            
+            this.cardwidth = 72;
+            this.cardheight = 96;
 
         },
         
@@ -57,7 +61,36 @@ function (dojo, declare) {
             }
             
             // TODO: Set up your game interface here, according to "gamedatas"
-            
+            this.playerHand = new ebg.stock();
+            this.playerHand.create(this, $('myhand'), this.cardwidth, this.cardheight);
+            this.playerHand.image_items_per_row = 13;
+            dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
+
+            for(var suit=1; suit <= 4; suit++) {
+                for(var value=2; value <= 14; value++) {
+                    var cardTypeId = this.getCardUniqueType(suit, value);
+                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/cards.jpg', cardTypeId);
+                }
+            }
+
+            console.log("Setting up cards in hand.")
+            for(var i in this.gamedatas.hand) {
+                var card = this.gamedatas.hand[i];
+                var suit = card.type;
+                var value = card.type_arg;
+                this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
+            }
+
+            console.log("Setting up cards on table.")
+            console.log(this.gamedatas.cardsontable)
+            for(var i in this.gamedatas.cardsontable) {
+                var card = this.gamedatas.cardsontable[i];
+                var suit = card.type;
+                var value = card.type_arg;
+                var player_id = card.location_arg;
+                this.playCardOnTable(player_id, suit, value, card.id);
+            }
+
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -157,7 +190,30 @@ function (dojo, declare) {
             script.
         
         */
+        getCardUniqueType: function(suit, value) {
+            return (suit - 1) * 13 + (value - 2);
+        },
 
+        playCardOnTable: function(player_id, suit, value, card_id) {
+            dojo.place(this.format_block('jstpl_cardontable', {
+                x: this.cardWidth * (value - 2),
+                y: this.cardheight * (suit - 1),
+                player_id: player_id
+
+            }), 'playertablecard_' + player_id);
+
+            if (player_id != this.player_id) {
+                this.placeOnObject('cardontable_' + player_id, 'overall_player_board' + player_id);
+            }
+            else {
+                if ($('myhand_item_' + card_id)) {
+                    this.placeOnObject('cardontable_' + player_id, 'myhand_item_' + card_id);
+                    this.playerHand.removeFromStockById(card_id);
+                }
+            }
+
+            this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
+        },
 
         ///////////////////////////////////////////////////
         //// Player's action
@@ -207,6 +263,31 @@ function (dojo, declare) {
         
         */
 
+        onPlayerHandSelectionChanged: function() {
+            var items = this.playerHand.getSelectedItems();
+
+            if (items.length > 0) {
+                if (this.checkAction('playCard', true)) {
+                    var cardId = items[0].id;
+                    console.log('on playCard ' + cardId);
+
+                    var type = items[0].type;
+                    var suit = Math.floor(type / 13) + 1;
+                    var value = type % 13 + 2;
+
+                    this.playCardOnTable(this.player_id, suit, value, cardId);
+
+                    this.playerHand.unselectAll();
+                }
+                else if (this.checkAction('bidCard')) {
+
+                }
+                else {
+                    this.playerHand.unselectAll();
+                }
+            }
+
+        },
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications

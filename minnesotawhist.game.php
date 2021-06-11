@@ -33,13 +33,13 @@ class MinnesotaWhist extends Table
         parent::__construct();
         
         self::initGameStateLabels( array( 
-            //    "my_first_global_variable" => 10,
-            //    "my_second_global_variable" => 11,
-            //      ...
-            //    "my_first_game_variant" => 100,
-            //    "my_second_game_variant" => 101,
-            //      ...
+            "currentHandType" => 10, // High/low
+            "trickSuit" => 11,
+            "dealer" => 12
         ) );        
+
+        $this->cards = self::getNew("module.common.deck");
+        $this->cards->init("card");
 	}
 	
     protected function getGameName( )
@@ -80,7 +80,32 @@ class MinnesotaWhist extends Table
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
-        //self::setGameStateInitialValue( 'my_first_global_variable', 0 );
+
+        // Note: hand types: 0 = playing low
+        //                   1 = playing high
+        self::setGameStateInitialValue('currentHandType', 0);
+
+        self::setGameStateInitialValue('trickSuit', 0);
+
+        // TODO:  Make this random
+        self::setGameStateInitialValue('dealer', 1);
+
+        // Create cards
+        $cards = array();
+        foreach($this->suits as $suit_id => $suit) {
+            for($value = 2; $value <= 14; $value++) {
+                $cards [] = array('type' => $suit_id, 'type_arg' => $value, 'nbr' => 1);
+            }
+        }
+
+        $this->cards->createCards($cards, 'deck');
+
+        $this->cards->shuffle('deck');
+
+        $players = self::loadPlayersBasicInfos();
+        foreach($players as $player_id => $player) {
+            $cards = $this->cards->pickcards(13, 'deck', $player_id);
+        }
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -117,6 +142,8 @@ class MinnesotaWhist extends Table
         $result['players'] = self::getCollectionFromDb( $sql );
   
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
+        $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
+        $result['cardsontable'] = $this->cards->getCardsInLocation('cardsontable');
   
         return $result;
     }
