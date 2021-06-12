@@ -100,13 +100,6 @@ class MinnesotaWhist extends Table
 
         $this->cards->createCards($cards, 'deck');
 
-        $this->cards->shuffle('deck');
-
-        $players = self::loadPlayersBasicInfos();
-        foreach($players as $player_id => $player) {
-            $cards = $this->cards->pickcards(13, 'deck', $player_id);
-        }
-        
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
         //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
@@ -210,6 +203,36 @@ class MinnesotaWhist extends Table
     }
     
     */
+    function playCard($card_id) {
+        self::checkAction("playCard");
+        $player_id = self::getActivePlayerId();
+        $this->cards->moveCard($card_id, 'cardsontable', $player_id);
+
+        // TODO: check rules here
+        $currentCard = $this->cards->getCard($card_id);
+
+        self::notifyAllPlayers('playCard', clienttranslate('${player_name} plays ${value_displayed} ${suit_displayed}'), 
+            array(
+                'i18n' =>array('suit_displayed', 'value_displayed'), 
+                'card_id' => $card_id, 
+                'player_id' => $player_id,
+                'player_name' => self::getActivePlayerName(),
+                'value' => $currentCard['type_arg'], 
+                'value_displayed' => $this->values_label[$currentCard ['type_arg']],
+                'suit' => $currentCard['type'],
+                'suit_displayed' => $this->suits[$currentCard['type']]['name']
+            )
+        );
+
+        $this->gamestate->nextState('playCard');
+    }
+
+    function playBid($card_id) {
+        self::checkAction("playBid");
+        // TODO: Implement bidding
+        $player_id = self::getActivePlayerId();
+        throw new BgaUserException(self::_("Not implemented:") . "$player_id plays $card_id");
+    }
 
     
 //////////////////////////////////////////////////////////////////////////////
@@ -238,6 +261,9 @@ class MinnesotaWhist extends Table
         );
     }    
     */
+    function argPlayBid() {
+        return array();
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state actions
@@ -260,6 +286,66 @@ class MinnesotaWhist extends Table
         $this->gamestate->nextState( 'some_gamestate_transition' );
     }    
     */
+
+    function stNewHand() {
+        // Take back all cards (from any location => null) to deck
+        $this->cards->moveAllCardsInLocation(null, "deck");
+        $this->cards->shuffle('deck');
+
+        $players = self::loadPlayersBasicInfos();
+        foreach($players as $player_id => $player) {
+            $cards = $this->cards->pickCards(13, 'deck', $player_id);
+            self::notifyPlayer($player_id, 'newHand', '', array('cards' => $cards));
+        }
+        $this->gamestate->nextState("");
+    }
+
+    function stShowBids() {
+        // TODO: Implement showing bids
+        
+        $this->gamestate->nextState();
+    }
+
+    function stNewTrick() {
+        self::setGameStateInitialValue('trickSuit', 0);
+        $this->gamestate->nextState();
+    }
+
+    function stNextPlayer() {
+        if ($this->cards->countCardInLocation('cardsontable') == 4) {
+            // TODO: Figure out winner of trick
+            $best_value_player_id = self::activeNextPlayer(); 
+            // TODO: For whist, figure out team that the cards/points go to
+            $this->cards->moveAllCardsInLocation('cardsontable', 'cardswon', null, $best_value_player_id);
+
+            $players = self::loadPlayersBasicInfos();
+            self::notifyAllPlayers('trickWin', clienttranslate('${player_name} wins the trick'), array(
+                'player_id' => $best_value_player_id,
+                'player_name' => $players[$best_value_player_id]['player_name']
+            ));
+            self::notifyAllPlayers('giveAllCardsToPlayer', '', array(
+                'player_id' => $best_value_player_id
+            ));
+
+            if ($this->cards->countCardInLocation('hand') == 0) {
+                $this->gamestate->nextState("endHand");
+            }
+            else {
+                $this->gamestate->nextState("nextTrick");
+            }
+        }
+        else {
+            $player_id = self::activeNextPlayer();
+            self::giveExtraTime($player_id);
+            $this->gamestate->nextState('nextPlayer');
+        }
+    }
+
+    function stEndHand() {
+        $this->gamestate->nextState('nextHand');
+    }
+
+
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Zombie

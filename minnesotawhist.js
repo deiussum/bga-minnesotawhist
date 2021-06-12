@@ -196,14 +196,14 @@ function (dojo, declare) {
 
         playCardOnTable: function(player_id, suit, value, card_id) {
             dojo.place(this.format_block('jstpl_cardontable', {
-                x: this.cardWidth * (value - 2),
+                x: this.cardwidth * (value - 2),
                 y: this.cardheight * (suit - 1),
                 player_id: player_id
 
             }), 'playertablecard_' + player_id);
 
             if (player_id != this.player_id) {
-                this.placeOnObject('cardontable_' + player_id, 'overall_player_board' + player_id);
+                this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
             }
             else {
                 if ($('myhand_item_' + card_id)) {
@@ -267,15 +267,20 @@ function (dojo, declare) {
             var items = this.playerHand.getSelectedItems();
 
             if (items.length > 0) {
-                if (this.checkAction('playCard', true)) {
-                    var cardId = items[0].id;
-                    console.log('on playCard ' + cardId);
+                var action = 'playCard';
+                if (this.checkAction(action, true)) {
+                    var card_id = items[0].id;
+                    console.log('on playCard ' + card_id);
 
-                    var type = items[0].type;
-                    var suit = Math.floor(type / 13) + 1;
-                    var value = type % 13 + 2;
+                    this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/" + action + ".html", {
+                        id: card_id,
+                        lock: true
+                    },this, function(result) {
 
-                    this.playCardOnTable(this.player_id, suit, value, cardId);
+                    }, function(is_error) {
+
+                    }
+                    );
 
                     this.playerHand.unselectAll();
                 }
@@ -286,7 +291,6 @@ function (dojo, declare) {
                     this.playerHand.unselectAll();
                 }
             }
-
         },
         
         ///////////////////////////////////////////////////
@@ -316,6 +320,11 @@ function (dojo, declare) {
             // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
+            dojo.subscribe('newHand', this, "notif_newHand");
+            dojo.subscribe('playCard', this, "notif_playCard");
+            dojo.subscribe('trickWin', this, "notif_trickWin");
+            this.notifqueue.setSynchronous('trickWin', 1000);
+            dojo.subscribe('giveAllCardsToPlayer', this, "notif_giveAllCardsToPlayer");
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -334,5 +343,34 @@ function (dojo, declare) {
         },    
         
         */
+        notif_newHand: function(notif) {
+            this.playerHand.removeAll();
+
+            for(var i in notif.args.cards) {
+                var card = notif.args.cards[i];
+                var suit = card.type;
+                var value = card.type_arg;
+                this.playerHand.addToStockWithId(this.getCardUniqueType(color, value), card.id);
+            }
+        },
+
+        notif_playCard: function(notif) {
+            this.playCardOnTable(notif.args.player_id, notif.args.suit, notif.args.value, notif.args.card_id);
+        },
+
+        notif_trickWin: function(notif) {
+            // Do nothing, just pause so players can view cards.
+        },
+        notif_giveAllCardsToPlayer: function(notif) {
+            var winner_id = notif.args.player_id;
+
+            for(var player_id in this.gamedatas.players) {
+                var anim = this.slideToObject('cardontable_' + player_id, 'overall_player_board_' + winner_id);
+                dojo.connect(anim, 'onEnd', function(node) {
+                    dojo.destroy(node);
+                });
+                anim.play();
+            }
+        }
    });             
 });

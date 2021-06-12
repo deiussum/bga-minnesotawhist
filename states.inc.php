@@ -58,18 +58,67 @@ $machinestates = array(
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => array( "" => 2 )
+        "transitions" => array( "" => 20 )
     ),
     
-    // Note: ID=2 => your first state
+    // New hand
+    20 => array(
+        "name" => "newHand",
+        "description" => "",
+        "type" => "game",
+        "action" => "stNewHand",
+        "updateGameProgression" => true,
+        "transitions" => array("" => 30)
+    ),
+    21 => array(
+        "name" => "playBid",
+        "description" => clienttranslate('Some players must still select their bid.'),
+        "descriptionmyturn" => clienttranslate('${you} must choose a black card to bid high, or a red card to bid low.'),
+        "type" => "multipleactiveplayer",
+        "action" => "stPlayBid",
+        "args" => "argPlayBid",
+        "possibleactions" => array("playBid"),
+        "transitions" => array("playBid" => 22)
+    ),
+    22 => array(
+        "name" => "showBids",
+        "description" => "",
+        "type" => "game",
+        "action" => "stShowBids",
+        "transitions" => array("startHand" => 30)
+    ),
 
-    2 => array(
-    		"name" => "playerTurn",
-    		"description" => clienttranslate('${actplayer} must play a card or pass'),
-    		"descriptionmyturn" => clienttranslate('${you} must play a card or pass'),
-    		"type" => "activeplayer",
-    		"possibleactions" => array( "playCard", "pass" ),
-    		"transitions" => array( "playCard" => 2, "pass" => 2 )
+    // Trick
+    30 => array(
+        "name" => "newTrick",
+        "description" => "",
+        "type" => "game",
+        "action" => "stNewTrick",
+        "transitions" => array("" => 31)
+    ),
+    31 => array(
+        "name" => "playerTurn",
+        "description" => clienttranslate('${actplayer} must play a card'),
+        "descriptionmyturn" => clienttranslate('${you} must play a card'),
+        "type" => "activeplayer",
+        "possibleactions" => array("playCard"),
+        "transitions" => array("playCard" => 32)
+    ),
+    32 => array(
+        "name" => "nextPlayer",
+        "description" => "",
+        "type" => "game",
+        "action" => "stNextPlayer",
+        "transitions" => array("nextPlayer" => 31, "nextTrick" => 30, "endHand" => 40)
+    ),
+
+    // End of the hand (scoring, etc...)
+    40 => array(
+        "name" => "endHand",
+        "description" => "",
+        "type" => "game",
+        "action" => "stEndHand",
+        "transitions" => array("nextHand" => 20, "endGame" => 99)
     ),
     
 /*

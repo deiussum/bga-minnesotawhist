@@ -36,11 +36,10 @@
   	    {
             $this->view = "minnesotawhist_minnesotawhist";
             self::trace( "Complete reinitialization of board game" );
-      }
+        } 
   	} 
   	
   	// TODO: defines your action entry points there
-
 
     /*
     
@@ -62,6 +61,19 @@
     }
     
     */
+    public function playCard() {
+        self::setAjaxMode();
+        $card_id = self::getArg("id", AT_posint, true);
+        $this->game->playCard($card_id);
+        self::ajaxResponse();
+    }
+
+    public function playBid() {
+      self::setAjaxMode();
+      $card_id = self::getArg("id", AT_posint, true);
+      $this->game->playBid($card_id);
+      self::ajaxResponse();
+    }
 
   }
   
