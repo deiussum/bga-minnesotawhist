@@ -325,6 +325,7 @@ function (dojo, declare) {
             dojo.subscribe('trickWin', this, "notif_trickWin");
             this.notifqueue.setSynchronous('trickWin', 1000);
             dojo.subscribe('giveAllCardsToPlayer', this, "notif_giveAllCardsToPlayer");
+            dojo.subscribe('newScores', this, "notif_newScores");
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -350,7 +351,7 @@ function (dojo, declare) {
                 var card = notif.args.cards[i];
                 var suit = card.type;
                 var value = card.type_arg;
-                this.playerHand.addToStockWithId(this.getCardUniqueType(color, value), card.id);
+                this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
             }
         },
 
@@ -361,6 +362,7 @@ function (dojo, declare) {
         notif_trickWin: function(notif) {
             // Do nothing, just pause so players can view cards.
         },
+
         notif_giveAllCardsToPlayer: function(notif) {
             var winner_id = notif.args.player_id;
 
@@ -370,6 +372,12 @@ function (dojo, declare) {
                     dojo.destroy(node);
                 });
                 anim.play();
+            }
+        },
+
+        notif_newScores: function(notif) {
+            for(var player_id in notif.args.newScores) {
+                this.scoreCtrl[player_id].toValue(notif.args.newScores[player_id]);
             }
         }
    });             

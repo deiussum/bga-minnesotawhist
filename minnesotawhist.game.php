@@ -211,6 +211,11 @@ class MinnesotaWhist extends Table
         // TODO: check rules here
         $currentCard = $this->cards->getCard($card_id);
 
+        $currentTrickSuit = self::getGameStateValue('trickSuit');
+        if ($currentTrickSuit == 0) {
+            self::setGameStateValue('trickSuit', $currentCard['type']);
+        }
+
         self::notifyAllPlayers('playCard', clienttranslate('${player_name} plays ${value_displayed} ${suit_displayed}'), 
             array(
                 'i18n' =>array('suit_displayed', 'value_displayed'), 
@@ -313,8 +318,22 @@ class MinnesotaWhist extends Table
 
     function stNextPlayer() {
         if ($this->cards->countCardInLocation('cardsontable') == 4) {
-            // TODO: Figure out winner of trick
-            $best_value_player_id = self::activeNextPlayer(); 
+
+            $cards_on_table = $this->cards->getCardsInLocation('cardsontable');
+            $best_value=0;
+            $best_value_player_id = null; 
+            $currentTrickSuit = self::getGameStateValue('trickSuit');
+            foreach($cards_on_table as $card) {
+                if ($card['type'] == $currentTrickSuit) {
+                    if ($best_value_player_id == null || $card['type_arg'] > $best_value) {
+                        $best_value_player_id = $card['location_arg'];
+                        $best_value = $card['type_arg'];
+                    }
+                }
+            }
+
+            $this->gamestate->changeActivePlayer($best_value_player_id);
+
             // TODO: For whist, figure out team that the cards/points go to
             $this->cards->moveAllCardsInLocation('cardsontable', 'cardswon', null, $best_value_player_id);
 
@@ -342,6 +361,49 @@ class MinnesotaWhist extends Table
     }
 
     function stEndHand() {
+        $players = self::loadPlayersBasicInfos();
+        
+        // TODO: Update for team scoring. For now just score by number of tricks taken
+        $players_to_points = array();
+        foreach($players as $player_id => $player) {
+            $player_to_points[$player_id] = 0;
+        }
+
+        $cards = $this->cards->getCardsInLocation("cardswon");
+        foreach($cards as $card) {
+            $player_id = $card['location_arg'];
+            $player_to_points[$player_id]++;
+        }
+
+        // Divide by 4 to get number of tricks vs. number of cards
+        foreach($players as $player_id => $player) {
+            $player_to_points[$player_id] /= 4;
+        }
+
+        // Apply scores to player
+        foreach($player_to_points as $player_id => $points) {
+            if ($points != 0) {
+                $sql = "UPDATE player SET player_score=player_score+$points WHERE player_id='$player_id'";
+                self::DbQuery($sql);
+                self::notifyAllPlayers("points", clienttranslate('${player_name} scored ${score} points.'), array(
+                    'player_id' => $player_id,
+                    'player_name' => $players[$player_id]['player_name'],
+                    'score' => $points
+                ));
+            }
+        }
+
+        $newScores = self::getCollectionFromDb("SELECT player_id, player_score FROM player", true);
+        self::notifyAllPlayers("newScores", '', array('newScores' => $newScores));
+
+        // Check if this is the end of the game
+        foreach($newScores as $player_id => $score) {
+            if ($score == 13) {
+                $this->gamestate->nextState("endGame");
+                return;
+            }
+        }
+
         $this->gamestate->nextState('nextHand');
     }
 
