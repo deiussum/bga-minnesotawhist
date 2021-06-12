@@ -105,6 +105,10 @@
     background-image: url('img/cards.jpg');
 }
 
+.cardontable.flipped {
+    background-image: url('img/card_back.png');
+}
+
 /*
     Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):
 

@@ -61,7 +61,12 @@ function (dojo, declare) {
                 dojo.place(this.format_block('jstpl_teamlabel', {
                     team_label: "Team "  + player.team,
                 }), 'player_board_' + player_id);
+
             }
+
+            var dealer_player_id = this.gamedatas.dealer_player_id;
+            console.log("Dealer is " + dealer_player_id);
+            dojo.place('<span> - Dealer</span>', 'player_board_' + dealer_player_id);
             
             // TODO: Set up your game interface here, according to "gamedatas"
             this.playerHand = new ebg.stock();
@@ -91,6 +96,10 @@ function (dojo, declare) {
                 this.playCardOnTable(player_id, suit, value, card.id);
             }
 
+            for(var i in this.gamedatas.bids) {
+                var player_id = this.gamedatas.bids[i];
+                this.playFlippedCard(player_id);
+            }
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -215,6 +224,25 @@ function (dojo, declare) {
             this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
         },
 
+        showFlippedCard: function(player_id, suit, value, card_id) {
+            dojo.place(this.format_block('jstpl_cardontable', {
+                x: this.cardwidth * (value - 2),
+                y: this.cardheight * (suit - 1),
+                player_id: player_id
+
+            }), 'cardontable_' + player_id);
+        },
+
+        playFlippedCard: function(player_id) {
+            dojo.place(this.format_block('jstpl_flippedcard', {
+                player_id: player_id
+            }), 'playertablecard_' + player_id);
+
+            this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+
+            this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
+        },
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -275,17 +303,24 @@ function (dojo, declare) {
                     this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/" + action + ".html", {
                         id: card_id,
                         lock: true
-                    },this, function(result) {
-
-                    }, function(is_error) {
-
-                    }
+                    },this
+                    , function(result) { }
+                    , function(is_error) { }
                     );
 
                     this.playerHand.unselectAll();
                 }
-                else if (this.checkAction('bidCard')) {
+                else if (this.checkAction('playBid')) {
+                    var card_id = items[0].id;
+                    console.log('on playCard ' + card_id);
 
+                    this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/playBid.html", {
+                        id: card_id,
+                        lock: true
+                    },this
+                    , function(result) { }
+                    , function(is_error) { }
+                    );
                 }
                 else {
                     this.playerHand.unselectAll();
@@ -326,24 +361,19 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('trickWin', 1000);
             dojo.subscribe('giveAllCardsToPlayer', this, "notif_giveAllCardsToPlayer");
             dojo.subscribe('newScores', this, "notif_newScores");
+
+            dojo.subscribe('bidCard', this, "notif_bidCard");
+            dojo.subscribe('bidsShown', this, "notif_bidsShown");
+            this.notifqueue.setSynchronous('bidsShown', 1000);
+
+            dojo.subscribe('removeCard', this, 'notif_removeCard');
+            dojo.subscribe('clearBids', this, "notif_clearBids");
+            dojo.subscribe('returnCard', this, "notif_returnCard");
+            console.log('notifications done');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
         
-        /*
-        Example:
-        
-        notif_cardPlayed: function( notif )
-        {
-            console.log( 'notif_cardPlayed' );
-            console.log( notif );
-            
-            // Note: notif.args contains the arguments specified during you "notifyAllPlayers" / "notifyPlayer" PHP call
-            
-            // TODO: play the card in the user interface.
-        },    
-        
-        */
         notif_newHand: function(notif) {
             this.playerHand.removeAll();
 
@@ -353,6 +383,42 @@ function (dojo, declare) {
                 var value = card.type_arg;
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
             }
+        },
+
+        notif_bidCard: function(notif) {
+            this.playFlippedCard(notif.args.player_id, notif.args.card_id);
+        },
+
+        notif_removeCard: function(notif) {
+            this.playerHand.removeFromStockById(notif.args.card_id);
+        },
+
+        notif_bidsShown: function(notif) {
+            for(var i in notif.args.bid_cards) {
+                var card = notif.args.bid_cards[i];
+                var suit = card.type;
+                var value = card.type_arg;
+                var player_id = card.location_arg;
+                this.showFlippedCard(player_id, suit, value, card.id);
+            }
+        },
+
+        notif_clearBids: function(notif) {
+            for(var player_id in this.gamedatas.players) {
+                var anim = this.slideToObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+                dojo.connect(anim, 'onEnd', function(node) {
+                    dojo.destroy(node);
+                });
+                anim.play();
+            }
+        },
+
+        notif_returnCard: function(notif) {
+            var card = notif.args.bid_card;
+            var suit = card.type;
+            var value = card.type_arg;
+
+            this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
         },
 
         notif_playCard: function(notif) {

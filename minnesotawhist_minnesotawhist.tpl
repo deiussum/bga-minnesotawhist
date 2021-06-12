@@ -55,6 +55,7 @@ var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_I
 
 */
 var jstpl_cardontable = '<div class="cardontable" id="cardontable_${player_id}" style="background-position:-${x}px -${y}px"></div>';
+var jstpl_flippedcard = '<div class="cardontable flipped" id="cardontable_${player_id}"></div>';
 var jstpl_teamlabel = '<span>${team_label}</span>'
 </script>  
 

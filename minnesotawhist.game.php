@@ -37,7 +37,8 @@ class MinnesotaWhist extends Table
             "trickSuit" => 11,
             "dealer" => 12,
             "teamscore1" => 13,
-            "teamscore2" => 14
+            "teamscore2" => 14,
+            "grandPlayer" => 15
         ) );        
 
         $this->cards = self::getNew("module.common.deck");
@@ -85,6 +86,7 @@ class MinnesotaWhist extends Table
         self::initializeGameState();
         self::initializeCards();
         self::initializeTeams();
+        self::initializeDealer($players);
 
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -122,6 +124,17 @@ class MinnesotaWhist extends Table
   
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['cardsontable'] = $this->cards->getCardsInLocation('cardsontable');
+
+        $bids = array();
+        $bids_on_table = $this->cards->getCardsInLocation('bidcards');
+
+        foreach($bids_on_table as $bid_card) {
+            $player_id = $bid_card['location_arg'];
+            array_push($bids, $player_id);
+        }
+        $result['bids'] = $bids;
+        $result['hand_type'] = $this->getGameStateValue("currentHandType");
+        $result['dealer_player_id']  = $this->getGameStateValue("dealer");
   
         return $result;
     }
@@ -159,8 +172,6 @@ class MinnesotaWhist extends Table
         self::setGameStateInitialValue('trickSuit', 0);
         self::setGameStateInitialValue('teamscore1', 0);
         self::setGameStateInitialValue('teamscore2', 0);
-        // TODO:  Make this random
-        self::setGameStateInitialValue('dealer', 0);
 
     }
 
@@ -187,6 +198,47 @@ class MinnesotaWhist extends Table
             $sql = "UPDATE player SET player_team=$team_no WHERE player_no=$player_no";
             self::DbQuery($sql);
         }
+    }
+
+    protected function initializeDealer($players) {
+        // TODO: Randomize initial dealer?
+        $dealer_id = array_keys($players)[0];
+        self::setGameStateInitialValue('dealer', $dealer_id);
+    }
+
+    public function getPlayerAfter($player_id) {
+        $players = self::loadPlayersBasicInfos();
+        $player = $players[$player_id];
+        $player_no = $player['player_no'];
+        $next_player_no = ($player_no % 4) + 1;
+        $next_player_id = 0;
+
+        foreach($players as $player_id => $next_player) {
+            if ($next_player['player_no'] == $next_player_no)
+            {
+                $next_player_id = $player_id;
+            }
+        }
+
+        return $next_player_id;
+    }
+
+    public function getPlayerBefore($player_id) {
+        $players = self::loadPlayersBasicInfos();
+        $player = $players[$player_id];
+        $player_no = $player['player_no'];
+        $prev_player_no = (($player_no - 1) % 4);
+        if ($prev_player_no == 0) $prev_player_no = 4;
+        $prev_player_id = 0;
+
+        foreach($players as $player_id => $next_player) {
+            if ($next_player['player_no'] == $prev_player_no)
+            {
+                $prev_player_id = $player_id;
+            }
+        }
+
+        return $prev_player_id;
     }
 
     public function getPlayerDirections() {
@@ -227,31 +279,6 @@ class MinnesotaWhist extends Table
         (note: each method below must match an input method in minnesotawhist.action.php)
     */
 
-    /*
-    
-    Example:
-
-    function playCard( $card_id )
-    {
-        // Check that this is the player's turn and that it is a "possible action" at this game state (see states.inc.php)
-        self::checkAction( 'playCard' ); 
-        
-        $player_id = self::getActivePlayerId();
-        
-        // Add your game logic to play a card there 
-        ...
-        
-        // Notify all players about the card played
-        self::notifyAllPlayers( "cardPlayed", clienttranslate( '${player_name} plays ${card_name}' ), array(
-            'player_id' => $player_id,
-            'player_name' => self::getActivePlayerName(),
-            'card_name' => $card_name,
-            'card_id' => $card_id
-        ) );
-          
-    }
-    
-    */
     function playCard($card_id) {
         self::checkAction("playCard");
         $player_id = self::getActivePlayerId();
@@ -283,9 +310,31 @@ class MinnesotaWhist extends Table
 
     function playBid($card_id) {
         self::checkAction("playBid");
-        // TODO: Implement bidding
-        $player_id = self::getActivePlayerId();
-        throw new BgaUserException(self::_("Not implemented:") . "$player_id plays $card_id");
+
+        $player_id = self::getCurrentPlayerId();
+
+        $card = $this->cards->getCard($card_id);
+
+        if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+            throw new feException("That card is not in your hand.");
+        }
+
+        $this->cards->moveCard($card_id, 'bidcards', $player_id);
+
+        self::notifyAllPlayers("bidCard", clienttranslate('${player_name} has placed a bid.'), 
+            array( 
+                'player_id' => $player_id,
+                'player_name' => self::getCurrentPlayerName(),
+            )
+        );
+
+        self::notifyPlayer($player_id, "removeCard", "", 
+            array(
+                'card_id' => $card_id
+            )
+        );
+
+        $this->gamestate->setPlayerNonMultiactive($player_id, "showBids");
     }
 
     
@@ -315,9 +364,6 @@ class MinnesotaWhist extends Table
         );
     }    
     */
-    function argPlayBid() {
-        return array();
-    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state actions
@@ -354,14 +400,92 @@ class MinnesotaWhist extends Table
         $this->gamestate->nextState("");
     }
 
+    function stPlayBid() {
+        $this->gamestate->setAllPlayersMultiactive();
+    }
+
     function stShowBids() {
-        // TODO: Implement showing bids
+        // TODO: Show minimum number of bids based on show order left from dealer
+        $bid_cards = array();
+
+        $dealer_id = $this->getGameStateValue('dealer');
+        $check_player_id = $dealer_id;
+        $play_mode = 1; // Default to low
+        $grand_player_id = 0;
+
+        for($i = 0; $i < 4; $i++) {
+            $check_player_id = $this->getPlayerAfter($check_player_id);
+            $player_bid_cards = $this->cards->getCardsInLocation('bidCards', $check_player_id);
+            $bid_card_id = array_keys($player_bid_cards)[0];
+            $this->cards->moveCard($bid_card_id, "cardsontable", $check_player_id);
+            $card = array_shift($player_bid_cards);
+            array_push($bid_cards, $card);
+
+            $suit = $card['type'];
+
+            if ($suit == 1 || $suit == 3) {
+                $play_mode = 2;
+                $grand_player_id = $check_player_id;
+                break;
+            }
+        }
+
+        $message = '';
+        $player_name = '';
+        $next_player = '';
+
+        if ($play_mode == 1) {
+            $message = 'All players bid low.';
+            $next_player = $this->getPlayerAfter($dealer_id);
+        }
+        else {
+            $message = '${player_name} bid high.';
+            $players = self::loadPlayersBasicInfos();
+            $player_name = $players[$grand_player_id]['player_name'];
+            $next_player = $this->getPlayerBefore($grand_player_id);
+        }
+
+        $this->gamestate->changeActivePlayer($next_player);
+
+        self::setGameStateValue('currentHandType', $play_mode);
+        self::setGameStateValue('grandPlayer', $grand_player_id);
+
+        self::notifyAllPlayers('bidsShown', clienttranslate($message), 
+            array(
+                'bid_cards' => $bid_cards,
+                'player_name' => $player_name,
+                'hand_type' => $play_mode,
+                'grand_player_id' => $grand_player_id
+            )
+        );
         
         $this->gamestate->nextState();
     }
 
+    function stReturnBids() {
+        $bid_cards = $this->cards->getCardsInLocation('cardsontable');
+        foreach($bid_cards as $card_id => $card) {
+            $player_id = $card['location_arg'];
+            $this->cards->moveCard($card_id, 'hand', $player_id);
+
+            self::notifyPlayer($player_id, 'returnCard', "", array('bid_card' => $card));
+        }
+
+        $bid_cards = $this->cards->getCardsInLocation('bidcards');
+        foreach($bid_cards as $card_id => $card) {
+            $player_id = $card['location_arg'];
+            $this->cards->moveCard($card_id, 'hand', $player_id);
+
+            self::notifyPlayer($player_id, 'returnCard', "", array('bid_card' => $card));
+        }
+
+        self::notifyAllPlayers('clearBids', '', array());
+
+        $this->gamestate->nextState();
+    }
+
     function stNewTrick() {
-        self::setGameStateInitialValue('trickSuit', 0);
+        self::setGameStateValue('trickSuit', 0);
         $this->gamestate->nextState();
     }
 
@@ -453,6 +577,10 @@ class MinnesotaWhist extends Table
             }
         }
 
+        $dealer_id = $this->getGameStateValue("dealer");
+        $next_dealer_id = $this->getPlayerAfter($dealer_id);
+        $this->setGameStateValue("dealer", $next_dealer_id);
+        
         $this->gamestate->nextState('nextHand');
     }
 
