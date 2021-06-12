@@ -35,7 +35,9 @@ class MinnesotaWhist extends Table
         self::initGameStateLabels( array( 
             "currentHandType" => 10, // High/low
             "trickSuit" => 11,
-            "dealer" => 12
+            "dealer" => 12,
+            "teamscore1" => 13,
+            "teamscore2" => 14
         ) );        
 
         $this->cards = self::getNew("module.common.deck");
@@ -80,25 +82,9 @@ class MinnesotaWhist extends Table
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
-
-        // Note: hand types: 0 = playing low
-        //                   1 = playing high
-        self::setGameStateInitialValue('currentHandType', 0);
-
-        self::setGameStateInitialValue('trickSuit', 0);
-
-        // TODO:  Make this random
-        self::setGameStateInitialValue('dealer', 1);
-
-        // Create cards
-        $cards = array();
-        foreach($this->suits as $suit_id => $suit) {
-            for($value = 2; $value <= 14; $value++) {
-                $cards [] = array('type' => $suit_id, 'type_arg' => $value, 'nbr' => 1);
-            }
-        }
-
-        $this->cards->createCards($cards, 'deck');
+        self::initializeGameState();
+        self::initializeCards();
+        self::initializeTeams();
 
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -131,10 +117,9 @@ class MinnesotaWhist extends Table
     
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
-        $sql = "SELECT player_id id, player_score score FROM player ";
+        $sql = "SELECT player_id id, player_score score, player_team team FROM player ";
         $result['players'] = self::getCollectionFromDb( $sql );
   
-        // TODO: Gather all information about current game situation (visible by player $current_player_id).
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['cardsontable'] = $this->cards->getCardsInLocation('cardsontable');
   
@@ -166,7 +151,71 @@ class MinnesotaWhist extends Table
     /*
         In this space, you can put any utility methods useful for your game logic
     */
+    protected function initializeGameState() {
+        // Note: hand types: 0 = bidding
+        //                   1 = playing low
+        //                   2 = playing high
+        self::setGameStateInitialValue('currentHandType', 0);
+        self::setGameStateInitialValue('trickSuit', 0);
+        self::setGameStateInitialValue('teamscore1', 0);
+        self::setGameStateInitialValue('teamscore2', 0);
+        // TODO:  Make this random
+        self::setGameStateInitialValue('dealer', 0);
 
+    }
+
+    protected function initializeCards() {
+        $cards = array();
+        foreach($this->suits as $suit_id => $suit) {
+            for($value = 2; $value <= 14; $value++) {
+                $cards [] = array('type' => $suit_id, 'type_arg' => $value, 'nbr' => 1);
+            }
+        }
+
+        $this->cards->createCards($cards, 'deck');
+    }
+
+    protected function initializeTeams() {
+        // TODO: Implement option to change teams.  For now keep it simple.  
+        //      Team 1: Players 1 & 3
+        //      Team 2: Players 2 & 4
+
+        foreach(array(0,1,2,3) as $player_index) {
+            $player_no = $player_index + 1;
+            $team_no = ($player_index % 2) + 1;
+
+            $sql = "UPDATE player SET player_team=$team_no WHERE player_no=$player_no";
+            self::DbQuery($sql);
+        }
+    }
+
+    public function getPlayerDirections() {
+        $result = array();
+
+        $players = self::loadPlayersBasicInfos();
+        $nextPlayer = self::createNextPlayerTable(array_keys($players));
+
+        $current_player_id = self::getCurrentPlayerId();
+        $directions = array('S', 'W', 'N', 'E');
+
+        if (!isset($nextPlayer[$current_player_id])) {
+            // Spectator mode: take any place for south
+            $current_player_id = $nextPlayer[0];
+        }
+
+        $current_player_no = $players[$current_player_id]['player_no'];
+
+        foreach($players as $player_id => $player) {
+          $player_no = $player['player_no'];
+
+          // Use a bit of math to determine which direction to place the cards
+          $dir_index = (4 - ($current_player_no - $player_no)) % 4;
+          $dir = $directions[$dir_index];
+          $result[$player_id] = $dir;
+        }
+
+        return $result;
+    }
 
 
 //////////////////////////////////////////////////////////////////////////////

@@ -58,6 +58,9 @@ function (dojo, declare) {
                 var player = gamedatas.players[player_id];
                          
                 // TODO: Setting up players boards if needed
+                dojo.place(this.format_block('jstpl_teamlabel', {
+                    team_label: "Team "  + player.team,
+                }), 'player_board_' + player_id);
             }
             
             // TODO: Set up your game interface here, according to "gamedatas"
@@ -73,7 +76,6 @@ function (dojo, declare) {
                 }
             }
 
-            console.log("Setting up cards in hand.")
             for(var i in this.gamedatas.hand) {
                 var card = this.gamedatas.hand[i];
                 var suit = card.type;
@@ -81,8 +83,6 @@ function (dojo, declare) {
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
             }
 
-            console.log("Setting up cards on table.")
-            console.log(this.gamedatas.cardsontable)
             for(var i in this.gamedatas.cardsontable) {
                 var card = this.gamedatas.cardsontable[i];
                 var suit = card.type;
