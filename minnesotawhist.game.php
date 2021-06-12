@@ -282,7 +282,6 @@ class MinnesotaWhist extends Table
     function playCard($card_id) {
         self::checkAction("playCard");
         $player_id = self::getActivePlayerId();
-        $this->cards->moveCard($card_id, 'cardsontable', $player_id);
 
         // TODO: check rules here
         $currentCard = $this->cards->getCard($card_id);
@@ -291,6 +290,25 @@ class MinnesotaWhist extends Table
         if ($currentTrickSuit == 0) {
             self::setGameStateValue('trickSuit', $currentCard['type']);
         }
+        else if ($currentTrickSuit != $currentCard['type']) {
+            // Does the user have any cards in their hand of the current suit?
+            $player_cards = $this->cards->getCardsInLocation("hand", $player_id);
+            $valid_card = true;
+
+            foreach($player_cards as $card_id => $card) {
+                if ($card['type'] == $currentTrickSuit) {
+                    $valid_card = false;
+                    break;
+                }
+            }
+
+            if (!$valid_card) {
+                $suit_name = $this->suits[$currentTrickSuit]['name'];
+                throw new feException(self::_("You must play a ${suit_name}."), true);
+            }
+        }
+
+        $this->cards->moveCard($card_id, 'cardsontable', $player_id);
 
         self::notifyAllPlayers('playCard', clienttranslate('${player_name} plays ${value_displayed} ${suit_displayed}'), 
             array(
