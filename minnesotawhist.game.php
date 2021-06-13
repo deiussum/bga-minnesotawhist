@@ -36,9 +36,11 @@ class MinnesotaWhist extends Table
             "currentHandType" => 10, // High/low
             "trickSuit" => 11,
             "dealer" => 12,
-            "teamscore1" => 13,
-            "teamscore2" => 14,
-            "grandPlayer" => 15
+            "team1score" => 13,
+            "team2score" => 14,
+            "grandPlayer" => 15,
+            "team1tricks" => 16,
+            "team2tricks" => 17
         ) );        
 
         $this->cards = self::getNew("module.common.deck");
@@ -170,9 +172,10 @@ class MinnesotaWhist extends Table
         //                   2 = playing high
         self::setGameStateInitialValue('currentHandType', 0);
         self::setGameStateInitialValue('trickSuit', 0);
-        self::setGameStateInitialValue('teamscore1', 0);
-        self::setGameStateInitialValue('teamscore2', 0);
-
+        self::setGameStateInitialValue('team1score', 0);
+        self::setGameStateInitialValue('team2score', 0);
+        self::setGameStateInitialValue('team1tricks', 0);
+        self::setGameStateInitialValue('team2tricks', 0);
     }
 
     protected function initializeCards() {
@@ -352,6 +355,7 @@ class MinnesotaWhist extends Table
             )
         );
 
+        self::giveExtraTime($player_id);
         $this->gamestate->setPlayerNonMultiactive($player_id, "showBids");
     }
 
@@ -409,6 +413,8 @@ class MinnesotaWhist extends Table
         // Take back all cards (from any location => null) to deck
         $this->cards->moveAllCardsInLocation(null, "deck");
         $this->cards->shuffle('deck');
+        self::setGameStateValue('team1tricks', 0);
+        self::setGameStateValue('team2tricks', 0);
 
         $players = self::loadPlayersBasicInfos();
         foreach($players as $player_id => $player) {
@@ -423,7 +429,6 @@ class MinnesotaWhist extends Table
     }
 
     function stShowBids() {
-        // TODO: Show minimum number of bids based on show order left from dealer
         $bid_cards = array();
 
         $dealer_id = $this->getGameStateValue('dealer');
@@ -525,10 +530,17 @@ class MinnesotaWhist extends Table
 
             $this->gamestate->changeActivePlayer($best_value_player_id);
 
-            // TODO: For whist, figure out team that the cards/points go to
+            $sql = "SELECT player_id, player_name, player_team FROM player";
+            $players = self::getCollectionFromDb( $sql );
+
+            $team = $players[$best_value_player_id]['player_team'];
+
+            $team_tricks_label = "team${team}tricks";
+            $team_tricks = $this->getGameStateValue($team_tricks_label) + 1;
+            $this->setGameStateValue($team_tricks_label, $team_tricks);
+
             $this->cards->moveAllCardsInLocation('cardsontable', 'cardswon', null, $best_value_player_id);
 
-            $players = self::loadPlayersBasicInfos();
             self::notifyAllPlayers('trickWin', clienttranslate('${player_name} wins the trick'), array(
                 'player_id' => $best_value_player_id,
                 'player_name' => $players[$best_value_player_id]['player_name']
@@ -543,6 +555,7 @@ class MinnesotaWhist extends Table
             else {
                 $this->gamestate->nextState("nextTrick");
             }
+            self::giveExtraTime($best_value_player_id);
         }
         else {
             $player_id = self::activeNextPlayer();
@@ -552,49 +565,58 @@ class MinnesotaWhist extends Table
     }
 
     function stEndHand() {
-        $players = self::loadPlayersBasicInfos();
-        
-        // TODO: Update for team scoring. For now just score by number of tricks taken
-        $players_to_points = array();
+        $team1_tricks = $this->getGameStateValue("team1tricks");
+        $team2_tricks = $this->getGameStateValue("team2tricks");
+        $play_mode = $this->getGameStateValue("currentHandType");
+        $grand_player_id = $this->getGameStateValue("grandPlayer");
+
+        $sql = "SELECT player_id, player_name, player_score, player_team FROM player";
+        $players = self::getCollectionFromDb( $sql );
+
+        $scoring_team = 0;
+        $points = max($team1_tricks, $team2_tricks)- 6;
+
+        if ($play_mode == 1) {
+            $scoring_team = $team1_tricks > $team2_tricks ? 2 : 1;
+        }
+        else if ($play_mode == 2) {
+            $scoring_team = $team1_tricks > $team2_tricks ? 1 : 2;
+            $grand_team = $players[$grand_player_id]['player_team'];
+
+            // Double points if the team that granded did not take the points
+            if ($grand_team != $scoring_team) $points *= 2;
+        }
+
+        // Update game state scores
+        $scoring_team_score_label = "team${scoring_team}score";
+        $scoring_team_score = $this->getGameStateValue($scoring_team_score_label);
+        $scoring_team_score += $points;
+        $this->setGameStateValue($scoring_team_score_label, $scoring_team_score);
+
+        // Update individual player scores
         foreach($players as $player_id => $player) {
-            $player_to_points[$player_id] = 0;
-        }
-
-        $cards = $this->cards->getCardsInLocation("cardswon");
-        foreach($cards as $card) {
-            $player_id = $card['location_arg'];
-            $player_to_points[$player_id]++;
-        }
-
-        // Divide by 4 to get number of tricks vs. number of cards
-        foreach($players as $player_id => $player) {
-            $player_to_points[$player_id] /= 4;
-        }
-
-        // Apply scores to player
-        foreach($player_to_points as $player_id => $points) {
-            if ($points != 0) {
-                $sql = "UPDATE player SET player_score=player_score+$points WHERE player_id='$player_id'";
+            if ($player['player_team'] == $scoring_team) {
+                $sql = "UPDATE player SET player_score = player_score + $points WHERE player_id='$player_id'";
                 self::DbQuery($sql);
-                self::notifyAllPlayers("points", clienttranslate('${player_name} scored ${score} points.'), array(
-                    'player_id' => $player_id,
-                    'player_name' => $players[$player_id]['player_name'],
-                    'score' => $points
-                ));
             }
         }
 
         $newScores = self::getCollectionFromDb("SELECT player_id, player_score FROM player", true);
-        self::notifyAllPlayers("newScores", '', array('newScores' => $newScores));
+        self::notifyAllPlayers("newScores", clienttranslate('Team ${scoring_team} scored ${points} points.'), 
+            array(
+                'newScores' => $newScores,
+                'scoring_team' => $scoring_team,
+                'points' => $points
+            )
+        );
 
         // Check if this is the end of the game
-        foreach($newScores as $player_id => $score) {
-            if ($score == 13) {
-                $this->gamestate->nextState("endGame");
-                return;
-            }
+        if ($scoring_team_score >= 13) {
+            $this->gamestate->nextState("endGame");
+            return;
         }
 
+        // Move dealer status to next player
         $dealer_id = $this->getGameStateValue("dealer");
         $next_dealer_id = $this->getPlayerAfter($dealer_id);
         $this->setGameStateValue("dealer", $next_dealer_id);
@@ -684,7 +706,5 @@ class MinnesotaWhist extends Table
 //        // Please add your future database scheme changes here
 //
 //
-
-
     }    
 }
