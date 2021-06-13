@@ -33,6 +33,11 @@ function (dojo, declare) {
             this.cardwidth = 72;
             this.cardheight = 96;
 
+            this.team1score_counter = new ebg.counter();
+            this.team2score_counter = new ebg.counter();
+            this.team1tricks_counter = new ebg.counter();
+            this.team2tricks_counter = new ebg.counter();
+
         },
         
         /*
@@ -100,6 +105,19 @@ function (dojo, declare) {
                 var player_id = this.gamedatas.bids[i];
                 this.playFlippedCard(player_id);
             }
+
+            // setup counters
+            this.team1score_counter.create("team1-score");
+            this.team1score_counter.setValue(this.gamedatas.team1score);
+
+            this.team2score_counter.create("team2-score");
+            this.team2score_counter.setValue(this.gamedatas.team2score);
+
+            this.team1tricks_counter.create("team1-tricks");
+            this.team1tricks_counter.setValue(this.gamedatas.team1tricks);
+
+            this.team2tricks_counter.create("team2-tricks");
+            this.team2tricks_counter.setValue(this.gamedatas.team2tricks);
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -426,7 +444,12 @@ function (dojo, declare) {
         },
 
         notif_trickWin: function(notif) {
-            // Do nothing, just pause so players can view cards.
+            if (notif.args.team == 1) {
+                this.team1tricks_counter.incValue(1);
+            }
+            else if (notif.args.team == 2) {
+                this.team2tricks_counter.incValue(1);
+            }
         },
 
         notif_giveAllCardsToPlayer: function(notif) {
@@ -445,6 +468,16 @@ function (dojo, declare) {
             for(var player_id in notif.args.newScores) {
                 this.scoreCtrl[player_id].toValue(notif.args.newScores[player_id]);
             }
+
+            if (notif.args.scoring_team == 1) {
+                this.team1score_counter.incValue(notif.args.points);
+            }
+            if (notif.args.scoring_team == 2) {
+                this.team2score_counter.incValue(notif.args.points);
+            }
+
+            this.team1tricks_counter.setValue(0);
+            this.team2tricks_counter.setValue(0);
         }
    });             
 });

@@ -109,6 +109,23 @@
     background-image: url('img/card_back.png');
 }
 
+.team-info-box {
+    width: 100px;
+    height: 70px;
+}
+
+#team1-info-box {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+}
+
+#team2-info-box {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+}
+
 /*
     Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):
 

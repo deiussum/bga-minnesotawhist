@@ -137,6 +137,12 @@ class MinnesotaWhist extends Table
         $result['bids'] = $bids;
         $result['hand_type'] = $this->getGameStateValue("currentHandType");
         $result['dealer_player_id']  = $this->getGameStateValue("dealer");
+
+        $scores = $this->getTeamScores();
+        $result['team1score'] = $scores['team1score'];
+        $result['team2score'] = $scores['team2score'];
+        $result['team1tricks'] = $scores['team1tricks'];
+        $result['team2tricks'] = $scores['team2tricks'];
   
         return $result;
     }
@@ -270,6 +276,15 @@ class MinnesotaWhist extends Table
         }
 
         return $result;
+    }
+
+    public function getTeamScores() {
+        return array(
+            "team1score" => self::getGameStateValue("team1score"),
+            "team2score" => self::getGameStateValue("team2score"),
+            "team1tricks" => self::getGameStateValue("team1tricks"),
+            "team2tricks" => self::getGameStateValue("team2tricks"),
+        );
     }
 
 
@@ -543,7 +558,8 @@ class MinnesotaWhist extends Table
 
             self::notifyAllPlayers('trickWin', clienttranslate('${player_name} wins the trick'), array(
                 'player_id' => $best_value_player_id,
-                'player_name' => $players[$best_value_player_id]['player_name']
+                'player_name' => $players[$best_value_player_id]['player_name'],
+                'team' => $team
             ));
             self::notifyAllPlayers('giveAllCardsToPlayer', '', array(
                 'player_id' => $best_value_player_id
