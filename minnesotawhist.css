@@ -126,6 +126,18 @@
     right: 0px;
 }
 
+#playmode-wrap {
+    position: absolute;
+    width: 100px;
+    height: 20px;
+    bottom: 0px;
+    font-weight: bold;
+}
+
+.red-text {
+    color: red;
+}
+
 /*
     Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):
 

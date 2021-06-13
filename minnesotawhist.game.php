@@ -136,6 +136,7 @@ class MinnesotaWhist extends Table
         }
         $result['bids'] = $bids;
         $result['hand_type'] = $this->getGameStateValue("currentHandType");
+        $result['hand_type_text'] = $this->getHandTypeText();
         $result['dealer_player_id']  = $this->getGameStateValue("dealer");
 
         $scores = $this->getTeamScores();
@@ -285,6 +286,18 @@ class MinnesotaWhist extends Table
             "team1tricks" => self::getGameStateValue("team1tricks"),
             "team2tricks" => self::getGameStateValue("team2tricks"),
         );
+    }
+
+    public function getHandTypeText() {
+        $hand_type = self::getGameStateValue("currentHandType");
+         
+        $messages = array(
+            0 => "Bidding",
+            1 => "Playing Low",
+            2 => "Playing High"
+        );
+
+        return $messages[$hand_type];
     }
 
 
@@ -493,6 +506,7 @@ class MinnesotaWhist extends Table
                 'bid_cards' => $bid_cards,
                 'player_name' => $player_name,
                 'hand_type' => $play_mode,
+                'hand_type_text' => clienttranslate($this->getHandTypeText()),
                 'grand_player_id' => $grand_player_id
             )
         );

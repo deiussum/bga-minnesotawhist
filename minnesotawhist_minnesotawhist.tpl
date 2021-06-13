@@ -55,6 +55,10 @@
         </div>
     </div> 
     <!-- END player -->
+
+    <div id="playmode-wrap" class="whiteblock">
+        <span id="playmode"></span>
+    </div>
 </div>
 
 <div id="myhand_wrap" class="whiteblock">

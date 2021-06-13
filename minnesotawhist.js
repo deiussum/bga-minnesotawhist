@@ -118,6 +118,8 @@ function (dojo, declare) {
 
             this.team2tricks_counter.create("team2-tricks");
             this.team2tricks_counter.setValue(this.gamedatas.team2tricks);
+
+            this.updatePlayMode(this.gamedatas.hand_type, this.gamedatas.hand_type_text);
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -259,6 +261,19 @@ function (dojo, declare) {
             this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
 
             this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
+        },
+
+        updatePlayMode: function(handType, handTypeText) {
+            console.log("Hand type:" + handTypeText);
+            var node = dojo.byId('playmode');
+            node.innerText = handTypeText;
+
+            if (handType == 1) {
+                node.classList.add('red-text');
+            }
+            else {
+                node.classList.remove('red-text');
+            }
         },
 
         ///////////////////////////////////////////////////
@@ -419,6 +434,7 @@ function (dojo, declare) {
                 var player_id = card.location_arg;
                 this.showFlippedCard(player_id, suit, value, card.id);
             }
+            this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
         },
 
         notif_clearBids: function(notif) {
