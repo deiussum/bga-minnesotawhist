@@ -314,8 +314,11 @@ class MinnesotaWhist extends Table
         self::checkAction("playCard");
         $player_id = self::getActivePlayerId();
 
-        // TODO: check rules here
         $currentCard = $this->cards->getCard($card_id);
+
+        if ($currentCard['location'] != 'hand' || $currentCard['location_arg'] != $player_id) {
+            throw new feException("That card is not in your hand.");
+        }
 
         $currentTrickSuit = self::getGameStateValue('trickSuit');
         if ($currentTrickSuit == 0) {
@@ -326,7 +329,7 @@ class MinnesotaWhist extends Table
             $player_cards = $this->cards->getCardsInLocation("hand", $player_id);
             $valid_card = true;
 
-            foreach($player_cards as $card_id => $card) {
+            foreach($player_cards as $card) {
                 if ($card['type'] == $currentTrickSuit) {
                     $valid_card = false;
                     break;
