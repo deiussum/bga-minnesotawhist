@@ -61,7 +61,7 @@
     </div>
 </div>
 
-<div id="myhand_wrap" class="whiteblock">
+<div id="myhand-wrap" class="whiteblock">
     <h3>{MY_HAND}</h3>
     <div id="myhand">
     </div>

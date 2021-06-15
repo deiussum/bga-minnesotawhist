@@ -77,6 +77,9 @@ function (dojo, declare) {
             this.playerHand = new ebg.stock();
             this.playerHand.create(this, $('myhand'), this.cardwidth, this.cardheight);
             this.playerHand.image_items_per_row = 13;
+            this.playerHand.centerItems = true;
+            this.playerHand.setOverlap(50, 0);
+
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
             for(var suit=1; suit <= 4; suit++) {
