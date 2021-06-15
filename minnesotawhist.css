@@ -50,9 +50,9 @@
 .playertablecard {
     display: inline-block;
     position: relative;
-    margin-top: 5px;
     width: 72px;
     height: 96px;
+    border: 2px solid #FFFFFF55;
 }
 
 #playertables {
@@ -61,6 +61,13 @@
     height: 340px;
     margin-left: auto;
     margin-right: auto;
+    background-image: url('img/table.jpg');
+    border-radius: 0.5em;
+}
+
+.playertablename.whiteblock {
+    padding: 5px;
+    margin: 5px;
 }
 
 .playertablename {
@@ -71,29 +78,29 @@
     position: absolute;
     text-align: center;
     width: 180px;
-    height: 130px;
+    height: 140px;
 }
 
 .playertable_N {
     left: 50%;
-    top: 0px;
+    top: 5px;
     margin-left: -90px; /* half of 180 */
 }
 
 .playertable_S {
     left: 50%;
-    bottom: 0px;
+    bottom: 5px;
     margin-left: -90px; /* half of 180 */
 }
 
 .playertable_W {
-    left: 0px;
+    left: 10px;
     top: 50%;
     margin-top: -55px; /* half of 130 */
 }
 
 .playertable_E {
-    right: 0px;
+    right: 10px;
     top: 50%;
     margin-top: -55px; /* half of 130 */
 }
@@ -116,21 +123,22 @@
 
 #team1-info-box {
     position: absolute;
-    top: 0px;
-    left: 0px;
+    top: 5px;
+    left: 10px;
 }
 
 #team2-info-box {
     position: absolute;
-    top: 0px;
-    right: 0px;
+    top: 5px;
+    right: 10px;
 }
 
 #playmode-wrap {
     position: absolute;
     width: 100px;
     height: 20px;
-    bottom: 0px;
+    left: 10px;
+    bottom: 5px;
     font-weight: bold;
 }
 

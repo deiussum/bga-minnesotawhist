@@ -47,8 +47,8 @@
     </div>
 
     <!-- BEGIN player -->
-    <div class="playertable whiteblock playertable_{DIR}">
-        <div class="playertablename" style="color:#{PLAYER_COLOR}">
+    <div class="playertable playertable_{DIR}">
+        <div class="playertablename whiteblock" style="color:#{PLAYER_COLOR}">
             {PLAYER_NAME}
         </div>
         <div class="playertablecard" id="playertablecard_{PLAYER_ID}">
