@@ -520,7 +520,7 @@ function (dojo, declare) {
             var winner_id = notif.args.player_id;
 
             for(var player_id in this.gamedatas.players) {
-                var anim = this.slideToObject('cardontable_' + player_id, 'overall_player_board_' + winner_id);
+                var anim = this.slideToObject('cardontable_' + player_id, 'cardontable_' + winner_id);
                 dojo.connect(anim, 'onEnd', function(node) {
                     dojo.destroy(node);
                 });
@@ -545,6 +545,7 @@ function (dojo, declare) {
 
             var dealer_id = notif.args.dealer_id;
             this.updateDealerIcon(dealer_id);
+            this.updateGrandIcon(0);
         }
    });             
 });
