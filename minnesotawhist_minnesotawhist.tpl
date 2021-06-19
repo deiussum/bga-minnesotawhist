@@ -48,8 +48,9 @@
 
     <!-- BEGIN player -->
     <div class="playertable playertable_{DIR}">
-        <div class="playertablename whiteblock" style="color:#{PLAYER_COLOR}">
-            {PLAYER_NAME}
+        <div class="playerheader whiteblock" style="color:#{PLAYER_COLOR}">
+            <span class="playertablename">{PLAYER_NAME}</span>
+            <span id="icons_{PLAYER_ID}" class="icon-container"></span> 
         </div>
         <div class="playertablecard" id="playertablecard_{PLAYER_ID}">
         </div>
@@ -79,7 +80,8 @@ var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_I
 */
 var jstpl_cardontable = '<div class="cardontable" id="cardontable_${player_id}" style="background-position:-${x}px -${y}px"></div>';
 var jstpl_flippedcard = '<div class="cardontable flipped" id="cardontable_${player_id}"></div>';
-var jstpl_teamlabel = '<span>${team_label}</span>'
+var jstpl_teamlabel = '<div>${team_label}</div><div id="playericons_${player_id}"></div>';
+var jstpl_icon = '<span class="icon ${icon}" title="${icon_text}"></span>';
 </script>  
 
 {OVERALL_GAME_FOOTER}

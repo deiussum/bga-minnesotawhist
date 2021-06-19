@@ -138,6 +138,7 @@ class MinnesotaWhist extends Table
         $result['hand_type'] = $this->getGameStateValue("currentHandType");
         $result['hand_type_text'] = $this->getHandTypeText();
         $result['dealer_player_id']  = $this->getGameStateValue("dealer");
+        $result['grand_player_id']  = $this->getGameStateValue("grandPlayer");
 
         $scores = $this->getTeamScores();
         $result['team1score'] = $scores['team1score'];
@@ -634,12 +635,18 @@ class MinnesotaWhist extends Table
             }
         }
 
+        // Move dealer status to next player
+        $dealer_id = $this->getGameStateValue("dealer");
+        $next_dealer_id = $this->getPlayerAfter($dealer_id);
+        $this->setGameStateValue("dealer", $next_dealer_id);
+
         $newScores = self::getCollectionFromDb("SELECT player_id, player_score FROM player", true);
         self::notifyAllPlayers("newScores", clienttranslate('Team ${scoring_team} scored ${points} points.'), 
             array(
                 'newScores' => $newScores,
                 'scoring_team' => $scoring_team,
-                'points' => $points
+                'points' => $points,
+                'dealer_id' => $next_dealer_id
             )
         );
 
@@ -648,11 +655,6 @@ class MinnesotaWhist extends Table
             $this->gamestate->nextState("endGame");
             return;
         }
-
-        // Move dealer status to next player
-        $dealer_id = $this->getGameStateValue("dealer");
-        $next_dealer_id = $this->getPlayerAfter($dealer_id);
-        $this->setGameStateValue("dealer", $next_dealer_id);
         
         $this->gamestate->nextState('nextHand');
     }

@@ -65,13 +65,18 @@
     border-radius: 0.5em;
 }
 
-.playertablename.whiteblock {
+.playerheader.whiteblock {
     padding: 5px;
     margin: 5px;
+    vertical-align: middle;
+    justify-content: center;
+    display: flex;
 }
 
 .playertablename {
+    display: inline-block;
     font-weight: bold;
+    margin-right: 5px;
 }
 
 .playertable {
@@ -154,6 +159,24 @@
 
 .red-text {
     color: red;
+}
+
+.icon {
+    display: inline-block;
+    width: 18px;
+    height: 20px;
+    background-image: url('img/icons.png');
+    margin: 0;
+}
+
+.icon-dealer {
+    background-position-x: 0;
+    background-position-y: 0;
+}
+
+.icon-grand {
+    background-position-x: -18px;
+    background-position-y: 0;
 }
 
 /*

@@ -37,7 +37,6 @@ function (dojo, declare) {
             this.team2score_counter = new ebg.counter();
             this.team1tricks_counter = new ebg.counter();
             this.team2tricks_counter = new ebg.counter();
-
         },
         
         /*
@@ -65,13 +64,16 @@ function (dojo, declare) {
                 // TODO: Setting up players boards if needed
                 dojo.place(this.format_block('jstpl_teamlabel', {
                     team_label: "Team "  + player.team,
+                    player_id: player_id
                 }), 'player_board_' + player_id);
 
             }
 
             var dealer_player_id = this.gamedatas.dealer_player_id;
-            console.log("Dealer is " + dealer_player_id);
-            dojo.place('<span> - Dealer</span>', 'player_board_' + dealer_player_id);
+            this.updateDealerIcon(dealer_player_id);
+
+            var grand_player_id = this.gamedatas.grand_player_id;
+            this.updateGrandIcon(grand_player_id);
             
             // TODO: Set up your game interface here, according to "gamedatas"
             this.playerHand = new ebg.stock();
@@ -279,6 +281,48 @@ function (dojo, declare) {
             }
         },
 
+        updateDealerIcon: function(dealer_id) {
+            console.log("Dealer is " + dealer_id);
+
+            var nodes = dojo.query(".icon-dealer");
+            for(var i=0; i<nodes.length; i++) {
+                var node = nodes[i];
+                node.parentNode.removeChild(node);
+            }
+
+            dojo.place(this.format_block('jstpl_icon', {
+                icon: 'icon-dealer',
+                icon_text: 'Dealer'
+            }), 'playericons_' + dealer_id);
+
+            dojo.place(this.format_block('jstpl_icon', {
+                icon: 'icon-dealer',
+                icon_text: 'Dealer'
+            }), 'icons_' + dealer_id);
+        },
+
+        updateGrandIcon: function(grand_player_id) {
+            console.log("Grand player is " + grand_player_id);
+
+            var nodes = dojo.query(".icon-grand");
+            for(var i=0; i<nodes.length; i++) {
+                var node = nodes[i];
+                node.parentNode.removeChild(node);
+            }
+
+            if (grand_player_id == null || grand_player_id == undefined || grand_player_id == 0) return;
+
+            dojo.place(this.format_block('jstpl_icon', {
+                icon: 'icon-grand',
+                icon_text: 'Granded'
+            }), 'playericons_' + grand_player_id);
+
+            dojo.place(this.format_block('jstpl_icon', {
+                icon: 'icon-grand',
+                icon_text: 'Granded'
+            }), 'icons_' + grand_player_id);
+        },
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -438,6 +482,7 @@ function (dojo, declare) {
                 this.showFlippedCard(player_id, suit, value, card.id);
             }
             this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
+            this.updateGrandIcon(notif.args.grand_player_id);
         },
 
         notif_clearBids: function(notif) {
@@ -497,6 +542,9 @@ function (dojo, declare) {
 
             this.team1tricks_counter.setValue(0);
             this.team2tricks_counter.setValue(0);
+
+            var dealer_id = notif.args.dealer_id;
+            this.updateDealerIcon(dealer_id);
         }
    });             
 });
