@@ -258,12 +258,17 @@ function (dojo, declare) {
             }), 'cardontable_' + player_id);
         },
 
-        playFlippedCard: function(player_id) {
+        playFlippedCard: function(player_id, card_id) {
             dojo.place(this.format_block('jstpl_flippedcard', {
                 player_id: player_id
             }), 'playertablecard_' + player_id);
 
-            this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+            if (player_id != this.player_id ) {
+                this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+            }
+            else {
+                this.placeOnObject('cardontable_' + player_id, 'myhand');
+            }
 
             this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
         },
