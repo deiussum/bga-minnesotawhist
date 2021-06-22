@@ -174,9 +174,12 @@ class MinnesotaWhist extends Table
     */
     function getGameProgression()
     {
-        // TODO: compute and return the game progression
+        $scores = $this->getTeamScores();
+        $team1score = $scores['team1score'];
+        $team2score = $scores['team2score'];
+        $highscore = max($team1score, $team2score);
 
-        return 0;
+        return ($highscore / 13) * 100;
     }
 
 
