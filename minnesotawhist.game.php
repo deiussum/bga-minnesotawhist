@@ -308,10 +308,8 @@ class MinnesotaWhist extends Table
     public function getTeamLabels() {
         $current_player_id = self::getCurrentPlayerId();
 
-        $sql = "select player_id, player_team team from player where player_id=" . $current_player_id;
-        $players = self::getCollectionFromDb( $sql );
-
-        $current_team = $players[$current_player_id]['team'];
+        $sql = "select player_team team from player where player_id=" . $current_player_id;
+        $current_team = self::getUniqueValueFromDB( $sql );
 
         if ($current_team == 1) {
             return array(
