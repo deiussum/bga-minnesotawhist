@@ -26,8 +26,8 @@
 -->
 
 <div id="playertables">
-    <div id="team1-info-box" class="team-info-box whiteblock">
-        <h3>Team 1</h3>
+    <div id="team1-info-box" class="team-info-box whiteblock {TEAM1CLASS}">
+        <h3>{TEAM1LABEL}</h3>
         <div>
             Score: <span id="team1-score">{TEAM1SCORE}</span>
         </div>
@@ -37,8 +37,8 @@
         <div id="team1-trick-icons" class="team-tricks"></div>
     </div>
 
-    <div id="team2-info-box" class="team-info-box whiteblock">
-        <h3>Team 2</h3>
+    <div id="team2-info-box" class="team-info-box whiteblock {TEAM2CLASS}">
+        <h3>{TEAM2LABEL}</h3>
         <div>
             Score: <span id="team2-score">{TEAM2SCORE}</span>
         </div>

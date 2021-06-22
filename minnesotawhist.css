@@ -145,13 +145,13 @@
     margin-left: -10px;
 }
 
-#team1-info-box {
+.team-us {
     position: absolute;
     top: 5px;
     left: 10px;
 }
 
-#team2-info-box {
+.team-them {
     position: absolute;
     top: 5px;
     right: 10px;

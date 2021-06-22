@@ -122,7 +122,9 @@ class MinnesotaWhist extends Table
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
         $sql = "SELECT player_id id, player_score score, player_team team FROM player ";
-        $result['players'] = self::getCollectionFromDb( $sql );
+
+        $players = self::getCollectionFromDb( $sql );
+        $result['players'] = $players;
   
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['cardsontable'] = $this->cards->getCardsInLocation('cardsontable');
@@ -145,6 +147,17 @@ class MinnesotaWhist extends Table
         $result['team2score'] = $scores['team2score'];
         $result['team1tricks'] = $scores['team1tricks'];
         $result['team2tricks'] = $scores['team2tricks'];
+
+        $current_player_team = $players[$current_player_id]['team'];
+
+        if ($current_player_team == 1) {
+            $result['team1label'] = 'Us';
+            $result['team2label'] = 'Them';
+        }
+        else {
+            $result['team1label'] = 'Them';
+            $result['team2label'] = 'Us';
+        }
   
         return $result;
     }
@@ -287,6 +300,28 @@ class MinnesotaWhist extends Table
             "team1tricks" => self::getGameStateValue("team1tricks"),
             "team2tricks" => self::getGameStateValue("team2tricks"),
         );
+    }
+
+    public function getTeamLabels() {
+        $current_player_id = self::getCurrentPlayerId();
+
+        $sql = "select player_id, player_team team from player where player_id=" . $current_player_id;
+        $players = self::getCollectionFromDb( $sql );
+
+        $current_team = $players[$current_player_id]['team'];
+
+        if ($current_team == 1) {
+            return array(
+                "team1label" => "Us",
+                "team2label" => "Them"
+            );
+        }
+        else {
+            return array(
+                "team1label" => "Them",
+                "team2label" => "Us"
+            );
+        }
     }
 
     public function getHandTypeText() {

@@ -55,6 +55,8 @@ function (dojo, declare) {
         setup: function( gamedatas )
         {
             console.log( "Starting game setup" );
+
+            var teamLabels = [ gamedatas.team1label, gamedatas.team2label ];
             
             // Setting up player boards
             for( var player_id in gamedatas.players )
@@ -63,7 +65,7 @@ function (dojo, declare) {
                          
                 // TODO: Setting up players boards if needed
                 dojo.place(this.format_block('jstpl_teamlabel', {
-                    team_label: "Team "  + player.team,
+                    team_label: teamLabels[player.team - 1],
                     player_id: player_id
                 }), 'player_board_' + player_id);
 
@@ -75,7 +77,6 @@ function (dojo, declare) {
             var grand_player_id = this.gamedatas.grand_player_id;
             this.updateGrandIcon(grand_player_id);
             
-            // TODO: Set up your game interface here, according to "gamedatas"
             this.playerHand = new ebg.stock();
             this.playerHand.create(this, $('myhand'), this.cardwidth, this.cardheight);
             this.playerHand.image_items_per_row = 13;

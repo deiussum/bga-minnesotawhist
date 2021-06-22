@@ -62,6 +62,12 @@
         $this->tpl['TEAM1TRICKS'] = $scores['team1tricks'];
         $this->tpl['TEAM2TRICKS'] = $scores['team2tricks'];
 
+        $labels = $this->game->getTeamLabels();
+        $this->tpl['TEAM1LABEL'] = $labels['team1label'];
+        $this->tpl['TEAM2LABEL'] = $labels['team2label'];
+        $this->tpl['TEAM1CLASS'] = 'team-' . strtolower($labels['team1label']);
+        $this->tpl['TEAM2CLASS'] = 'team-' . strtolower($labels['team2label']);
+
 
         /*********** Do not change anything below this line  ************/
   	}
