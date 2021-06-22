@@ -120,9 +120,11 @@ function (dojo, declare) {
 
             this.team1tricks_counter.create("team1-tricks");
             this.team1tricks_counter.setValue(this.gamedatas.team1tricks);
+            this.addIconToTeamTricks(1, this.gamedatas.team1tricks);
 
             this.team2tricks_counter.create("team2-tricks");
             this.team2tricks_counter.setValue(this.gamedatas.team2tricks);
+            this.addIconToTeamTricks(2, this.gamedatas.team2tricks);
 
             this.updatePlayMode(this.gamedatas.hand_type, this.gamedatas.hand_type_text);
  
@@ -328,6 +330,25 @@ function (dojo, declare) {
             }), 'icons_' + grand_player_id);
         },
 
+        addIconToTeamTricks: function(team, count) {
+            if (count === undefined) count = 1;
+
+            for(var i=0;i<count; i++) {
+                dojo.place(this.format_block('jstpl_icon', {
+                    icon: 'icon-cardback',
+                    icon_text: 'Tricks'
+                }), "team" + team + "-trick-icons");
+            }
+        },
+
+        clearTeamTrickIcons: function() {
+            var nodes = dojo.query(".icon-cardback");
+            for(var i=0; i<nodes.length; i++) {
+                var node = nodes[i];
+                node.parentNode.removeChild(node);
+            }
+        },
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -515,9 +536,11 @@ function (dojo, declare) {
         notif_trickWin: function(notif) {
             if (notif.args.team == 1) {
                 this.team1tricks_counter.incValue(1);
+                this.addIconToTeamTricks(1);
             }
             else if (notif.args.team == 2) {
                 this.team2tricks_counter.incValue(1);
+                this.addIconToTeamTricks(2);
             }
         },
 
@@ -547,6 +570,7 @@ function (dojo, declare) {
 
             this.team1tricks_counter.setValue(0);
             this.team2tricks_counter.setValue(0);
+            this.clearTeamTrickIcons();
 
             var dealer_id = notif.args.dealer_id;
             this.updateDealerIcon(dealer_id);

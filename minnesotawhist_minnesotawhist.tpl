@@ -34,6 +34,7 @@
         <div>
             Tricks: <span id="team1-tricks">{TEAM1TRICKS}</span>
         </div>
+        <div id="team1-trick-icons" class="team-tricks"></div>
     </div>
 
     <div id="team2-info-box" class="team-info-box whiteblock">
@@ -44,6 +45,7 @@
         <div>
             Tricks: <span id="team2-tricks">{TEAM2TRICKS}</span>
         </div>
+        <div id="team2-trick-icons" class="team-tricks"></div>
     </div>
 
     <!-- BEGIN player -->

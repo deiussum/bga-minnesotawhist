@@ -132,8 +132,17 @@
 }
 
 .team-info-box {
-    width: 100px;
-    height: 70px;
+    width: 108px;
+    height: 78px;
+    padding-top: 5px;
+}
+
+.team-tricks {
+    margin-left: 3px;
+}
+
+.team-tricks .icon {
+    margin-left: -10px;
 }
 
 #team1-info-box {
@@ -178,6 +187,12 @@
     background-position-x: -18px;
     background-position-y: 0;
 }
+
+.icon-cardback {
+    background-position-x: -36px;
+    background-position-y: 0;
+}
+
 
 /*
     Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):
