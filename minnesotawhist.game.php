@@ -23,7 +23,8 @@ require_once( APP_GAMEMODULE_PATH.'module/table/table.game.php' );
 class MinnesotaWhist extends Table
 {
 	function __construct( )
-	{
+	{   
+
         // Your global variables labels:
         //  Here, you can assign labels to global variables you are using for this game.
         //  You can use any number of global variables with IDs between 10 and 99.
@@ -40,11 +41,16 @@ class MinnesotaWhist extends Table
             "team2score" => 14,
             "grandPlayer" => 15,
             "team1tricks" => 16,
-            "team2tricks" => 17
+            "team2tricks" => 17,
+            "teamOptions" => 100
         ) );        
 
         $this->cards = self::getNew("module.common.deck");
         $this->cards->init("card");
+        $this->TEAM_RANDOM = 1;
+        $this->TEAM_1_3 = 2;
+        $this->TEAM_1_2 = 3;
+        $this->TEAM_1_4 = 4;
 	}
 	
     protected function getGameName( )
@@ -66,20 +72,23 @@ class MinnesotaWhist extends Table
         // The default below is red/green/blue/orange/brown
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
-        $default_colors = $gameinfos['player_colors'];
+
+        $initialPlayerOrder = $this->getInitialPlayerOrder($players);
+        $playerOrder = $this->getPlayerOrder();
+        $playerColors = array("ff0000", "008000");
  
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
-        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES ";
+        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_no) VALUES ";
         $values = array();
         foreach( $players as $player_id => $player )
         {
-            $color = array_shift( $default_colors );
-            $values[] = "('".$player_id."','$color','".$player['player_canal']."','".addslashes( $player['player_name'] )."','".addslashes( $player['player_avatar'] )."')";
+            $playerNumber = $playerOrder[$initialPlayerOrder[$player_id]];
+            $color = $playerColors[$playerNumber % 2];
+            $values[] = "('".$player_id."','$color','".$player['player_canal']."','".addslashes( $player['player_name'] )."','".addslashes( $player['player_avatar'] )."','".$playerNumber."')";
         }
         $sql .= implode( $values, ',' );
         self::DbQuery( $sql );
-        self::reattributeColorsBasedOnPreferences( $players, $gameinfos['player_colors'] );
         self::reloadPlayersBasicInfos();
         
         /************ Start the game initialization *****/
@@ -200,6 +209,39 @@ class MinnesotaWhist extends Table
         self::setGameStateInitialValue('team2score', 0);
         self::setGameStateInitialValue('team1tricks', 0);
         self::setGameStateInitialValue('team2tricks', 0);
+    }
+
+    protected function getInitialPlayerOrder($players) {
+        // Retrieve inital player order ([0=>playerId1, 1=>playerId2, ...])
+		$playerInitialOrder = [];
+		foreach ($players as $playerId => $player) {
+			$playerInitialOrder[$player['player_table_order']] = $playerId;
+		}
+		ksort($playerInitialOrder);
+		$playerInitialOrder = array_flip(array_values($playerInitialOrder));
+
+        return $playerInitialOrder;
+    }
+
+    protected function getPlayerOrder() {
+		// Player order based on 'playerTeams' option
+		$playerOrder = [1, 2, 3, 4];
+		switch (self::getGameStateValue('teamOptions')) {
+			case $this->TEAM_1_2:
+				$playerOrder = [1, 3, 2, 4];
+				break;
+			case $this->TEAM_1_4:
+				$playerOrder = [1, 2, 4, 3];
+				break;
+			case $this->TEAM_RANDOM:
+				shuffle($playerOrder);
+				break;
+			case $this->TEAM_1_3:
+    
+				break;
+		}
+
+        return $playerOrder;
     }
 
     protected function initializeCards() {
