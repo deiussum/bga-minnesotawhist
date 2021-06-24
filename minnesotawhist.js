@@ -63,7 +63,7 @@ function (dojo, declare) {
             {
                 var player = gamedatas.players[player_id];
                          
-                // TODO: Setting up players boards if needed
+                // Setting up players boards 
                 dojo.place(this.format_block('jstpl_teamlabel', {
                     team_label: teamLabels[player.team - 1],
                     player_id: player_id
@@ -451,17 +451,8 @@ function (dojo, declare) {
         {
             console.log( 'notifications subscriptions setup' );
             
-            // TODO: here, associate your game notifications with local methods
+            // associate your game notifications with local methods
             
-            // Example 1: standard notification handling
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            
-            // Example 2: standard notification handling + tell the user interface to wait
-            //            during 3 seconds after calling the method in order to let the players
-            //            see what is happening in the game.
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
-            // 
             dojo.subscribe('newHand', this, "notif_newHand");
             dojo.subscribe('playCard', this, "notif_playCard");
             dojo.subscribe('trickWin', this, "notif_trickWin");
@@ -479,7 +470,7 @@ function (dojo, declare) {
             console.log('notifications done');
         },  
         
-        // TODO: from this point and below, you can write your game notifications handling methods
+        // from this point and below, you can write your game notifications handling methods
         
         notif_newHand: function(notif) {
             this.playerHand.removeAll();

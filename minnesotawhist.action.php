@@ -39,7 +39,7 @@
         } 
   	} 
   	
-  	// TODO: defines your action entry points there
+  	// defines your action entry points there
 
     /*
     

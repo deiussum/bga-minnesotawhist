@@ -115,7 +115,7 @@ class MinnesotaWhist extends Table
         //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
-        // TODO: setup the initial game situation here
+        // setup the initial game situation here
        
 
         // Activate first player (which is in general a good idea :) )
@@ -267,8 +267,8 @@ class MinnesotaWhist extends Table
     }
 
     protected function initializeDealer($players) {
-        // TODO: Randomize initial dealer?
-        $dealer_id = array_keys($players)[0];
+        $firstDealer = bga_rand(0,3);
+        $dealer_id = array_keys($players)[$firstDealer];
         self::setGameStateInitialValue('dealer', $dealer_id);
     }
 
