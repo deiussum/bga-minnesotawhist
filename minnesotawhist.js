@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * MinnesotaWhist implementation : © <Your name here> <Your email address here>
+ * MinnesotaWhist implementation : © Daniel Jenkins <deiussum@gmail.com>
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -363,41 +363,6 @@ function (dojo, declare) {
             _ make a call to the game server
         
         */
-        
-        /* Example:
-        
-        onMyMethodToCall1: function( evt )
-        {
-            console.log( 'onMyMethodToCall1' );
-            
-            // Preventing default browser reaction
-            dojo.stopEvent( evt );
-
-            // Check that this action is possible (see "possibleactions" in states.inc.php)
-            if( ! this.checkAction( 'myAction' ) )
-            {   return; }
-
-            this.ajaxcall( "/minnesotawhist/minnesotawhist/myAction.html", { 
-                                                                    lock: true, 
-                                                                    myArgument1: arg1, 
-                                                                    myArgument2: arg2,
-                                                                    ...
-                                                                 }, 
-                         this, function( result ) {
-                            
-                            // What to do after the server call if it succeeded
-                            // (most of the time: nothing)
-                            
-                         }, function( is_error) {
-
-                            // What to do after the server call in anyway (success or failure)
-                            // (most of the time: nothing)
-
-                         } );        
-        },        
-        
-        */
-
         onPlayerHandSelectionChanged: function() {
             var items = this.playerHand.getSelectedItems();
 
@@ -467,7 +432,6 @@ function (dojo, declare) {
             dojo.subscribe('removeCard', this, 'notif_removeCard');
             dojo.subscribe('clearBids', this, "notif_clearBids");
             dojo.subscribe('returnCard', this, "notif_returnCard");
-            console.log('notifications done');
         },  
         
         // from this point and below, you can write your game notifications handling methods

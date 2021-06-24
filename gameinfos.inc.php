@@ -13,7 +13,7 @@
 $gameinfos = array( 
 
 // Name of the game in English (will serve as the basis for translation) 
-'game_name' => "Minnesota Whist",
+'game_name' => clienttranslate("Minnesota Whist"),
 
 // Game designer (or game designers, separated by commas)
 'designer' => '',       
@@ -25,7 +25,7 @@ $gameinfos = array(
 'year' => 0,                 
 
 // Game publisher (use empty string if there is no publisher)
-'publisher' => '',                     
+'publisher' => '(Public Domain)',                     
 
 // Url of game publisher website
 'publisher_website' => '',   

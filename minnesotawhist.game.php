@@ -2,7 +2,7 @@
  /**
   *------
   * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
-  * MinnesotaWhist implementation : © <Your name here> <Your email address here>
+  * MinnesotaWhist implementation : © Daniel Jenkins <deiussum@gmail.com>
   * 
   * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
   * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -189,16 +189,16 @@ class MinnesotaWhist extends Table
         }
 
         if ($current_player_team == 1) {
-            $result['team1label'] = 'Us';
-            $result['team2label'] = 'Them';
+            $result['team1label'] = clienttranslate('Us');
+            $result['team2label'] = clienttranslate('Them');
         }
         else if ($current_player_team == 2) {
-            $result['team1label'] = 'Them';
-            $result['team2label'] = 'Us';
+            $result['team1label'] = clienttranslate('Them');
+            $result['team2label'] = clienttranslate('Us');
         }
         else {
-            $result['team1label'] = 'Team 1';
-            $result['team2label'] = 'Team 2';
+            $result['team1label'] = clienttranslate('Team 1');
+            $result['team2label'] = clienttranslate('Team 2');
         }
 
   
@@ -362,9 +362,9 @@ class MinnesotaWhist extends Table
         $hand_type = self::getGameStateValue("currentHandType");
          
         $messages = array(
-            0 => "Bidding",
-            1 => "Playing Low",
-            2 => "Playing High"
+            0 => "Bidding", // NOI18N
+            1 => "Playing Low", // NOI18N
+            2 => "Playing High" // NOI18N
         );
 
         return $messages[$hand_type];
@@ -408,7 +408,7 @@ class MinnesotaWhist extends Table
 
             if (!$valid_card) {
                 $suit_name = $this->suits[$currentTrickSuit]['name'];
-                throw new feException(self::_("You must play a ${suit_name}."), true);
+                throw new feException(self::_("You must play a $suit_name."), true);
             }
         }
 
@@ -569,11 +569,11 @@ class MinnesotaWhist extends Table
         $next_player = '';
 
         if ($play_mode == self::PLAYING_LOW) {
-            $message = 'All players bid low.';
+            $message = clienttranslate('All players bid low.');
             $next_player = $this->getPlayerAfter($dealer_id);
         }
         else {
-            $message = '${player_name} bid high.';
+            $message = clienttranslate('${player_name} bid high.');
             $players = self::loadPlayersBasicInfos();
             $player_name = $players[$grand_player_id]['player_name'];
             $next_player = $this->getPlayerBefore($grand_player_id);
@@ -584,13 +584,13 @@ class MinnesotaWhist extends Table
         self::setGameStateValue('currentHandType', $play_mode);
         self::setGameStateValue('grandPlayer', $grand_player_id);
 
-        self::notifyAllPlayers('bidsShown', clienttranslate($message), 
+        self::notifyAllPlayers('bidsShown', $message, 
             array(
                 'bid_cards' => $bid_cards,
                 'player_name' => $player_name,
                 'hand_type' => $play_mode,
-                'hand_type_text' => clienttranslate($this->getHandTypeText()),
-                'grand_player_id' => $grand_player_id
+                'hand_type_text' => $this->getHandTypeText(),
+                'grand_player_id' => $grand_player_id,
             )
         );
         
