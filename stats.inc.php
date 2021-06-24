@@ -52,31 +52,29 @@ $stats_type = array(
     // Statistics global to table
     "table" => array(
 
-        "turns_number" => array("id"=> 10,
-                    "name" => totranslate("Number of turns"),
+        "hands_played" => array("id"=> 10,
+                    "name" => totranslate("Number of hands"),
                     "type" => "int" ),
-
-/*
-        Examples:
-
-
-        "table_teststat1" => array(   "id"=> 10,
-                                "name" => totranslate("table test stat 1"), 
-                                "type" => "int" ),
-                                
-        "table_teststat2" => array(   "id"=> 11,
-                                "name" => totranslate("table test stat 2"), 
-                                "type" => "float" )
-*/  
     ),
     
     // Statistics existing for each player
     "player" => array(
 
-        "turns_number" => array("id"=> 10,
-                    "name" => totranslate("Number of turns"),
+        "tricks_taken" => array("id"=> 15,
+                    "name" => totranslate("Number of tricks taken"),
                     "type" => "int" ),
-    
+        "high_bids" => array("id" => 16,
+                    "name" => totranslate("Number of high bids"),
+                    "type" => "int" ),
+        "low_bids" => array("id" => 17,
+                    "name" => totranslate("Number of low bids"),
+                    "type" => "int" ),
+        "failed_grand" => array("id" => 18,
+                    "name" => totranslate("Failed to take majority of tricks after granding."),
+                    "type" => "int" ),
+        "succeed_grand" => array("id" => 19,
+                    "name" => totranslate("Succeeded to take majority of tricks after granding."),
+                    "type" => "int" )
 /*
         Examples:    
         

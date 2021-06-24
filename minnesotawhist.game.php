@@ -122,8 +122,10 @@ class MinnesotaWhist extends Table
 
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
-        //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
-        //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
+        self::initStat('table', 'hands_played', 0);
+        self::initStat('player', 'tricks_taken', 0);
+        self::initStat('player', 'high_bids', 0);
+        self::initStat('player', 'low_bids', 0);
 
         // setup the initial game situation here
        
@@ -417,6 +419,14 @@ class MinnesotaWhist extends Table
         $player_id = self::getCurrentPlayerId();
 
         $card = $this->cards->getCard($card_id);
+        $bid_high = $card['type'] == self::SPADES || $card['type'] == self::CLUBS;
+
+        if ($bid_high) {
+            self::IncStat(1, "high_bids", $player_id);
+        }
+        else {
+            self::IncStat(1, "low_bids", $player_id);
+        }
 
         if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
             throw new feException("That card is not in your hand.");
@@ -492,6 +502,8 @@ class MinnesotaWhist extends Table
     */
 
     function stNewHand() {
+        self::incStat(1, "hands_played");
+
         // Take back all cards (from any location => null) to deck
         $this->cards->moveAllCardsInLocation(null, "deck");
         $this->cards->shuffle('deck');
@@ -611,6 +623,8 @@ class MinnesotaWhist extends Table
                 }
             }
 
+            self::IncStat(1, "tricks_taken", $best_value_player_id);
+
             $this->gamestate->changeActivePlayer($best_value_player_id);
 
             $sql = "SELECT player_id, player_name, player_team FROM player";
@@ -668,7 +682,13 @@ class MinnesotaWhist extends Table
             $grand_team = $players[$grand_player_id]['player_team'];
 
             // Double points if the team that granded did not take the points
-            if ($grand_team != $scoring_team) $points *= 2;
+            if ($grand_team != $scoring_team) {
+                $points *= 2;
+                self::IncStat(1, "failed_grand", $grand_player_id);
+            }
+            else {
+                self::IncStat(1, "succeed_grand", $grand_player_id);
+            }
         }
 
         // Update game state scores
