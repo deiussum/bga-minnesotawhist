@@ -81,7 +81,7 @@ function (dojo, declare) {
             this.playerHand.create(this, $('myhand'), this.cardwidth, this.cardheight);
             this.playerHand.image_items_per_row = 13;
             this.playerHand.centerItems = true;
-            this.playerHand.setOverlap(50, 0);
+            this.playerHand.setOverlap(60, 0);
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
