@@ -79,13 +79,25 @@ class MinnesotaWhist extends Table
  
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
-        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_no) VALUES ";
+        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_team, player_no) VALUES ";
         $values = array();
         foreach( $players as $player_id => $player )
         {
             $playerNumber = $playerOrder[$initialPlayerOrder[$player_id]];
             $color = $playerColors[$playerNumber % 2];
-            $values[] = "('".$player_id."','$color','".$player['player_canal']."','".addslashes( $player['player_name'] )."','".addslashes( $player['player_avatar'] )."','".$playerNumber."')";
+            $playerTeam = (($playerNumber - 1) % 2) + 1;
+
+            $playerValues = array(
+                $player_id,
+                "'$color'",
+                '\'' . $player['player_canal'] . '\'',
+                '\'' . addslashes( $player['player_name'] ) . '\'',
+                '\'' . addslashes( $player['player_avatar'] ) . '\'',
+                $playerTeam,
+                $playerNumber
+            );
+
+            $values[] = '(' . implode($playerValues, ',') . ')';
         }
         $sql .= implode( $values, ',' );
         self::DbQuery( $sql );
@@ -96,7 +108,6 @@ class MinnesotaWhist extends Table
         // Init global values with their initial values
         self::initializeGameState();
         self::initializeCards();
-        self::initializeTeams();
         self::initializeDealer($players);
 
         // Init game statistics
@@ -255,59 +266,10 @@ class MinnesotaWhist extends Table
         $this->cards->createCards($cards, 'deck');
     }
 
-    protected function initializeTeams() {
-        // TODO: Implement option to change teams.  For now keep it simple.  
-        //      Team 1: Players 1 & 3
-        //      Team 2: Players 2 & 4
-
-        foreach(array(0,1,2,3) as $player_index) {
-            $player_no = $player_index + 1;
-            $team_no = ($player_index % 2) + 1;
-
-            $sql = "UPDATE player SET player_team=$team_no WHERE player_no=$player_no";
-            self::DbQuery($sql);
-        }
-    }
-
     protected function initializeDealer($players) {
         // TODO: Randomize initial dealer?
         $dealer_id = array_keys($players)[0];
         self::setGameStateInitialValue('dealer', $dealer_id);
-    }
-
-    public function getPlayerAfter($player_id) {
-        $players = self::loadPlayersBasicInfos();
-        $player = $players[$player_id];
-        $player_no = $player['player_no'];
-        $next_player_no = ($player_no % 4) + 1;
-        $next_player_id = 0;
-
-        foreach($players as $player_id => $next_player) {
-            if ($next_player['player_no'] == $next_player_no)
-            {
-                $next_player_id = $player_id;
-            }
-        }
-
-        return $next_player_id;
-    }
-
-    public function getPlayerBefore($player_id) {
-        $players = self::loadPlayersBasicInfos();
-        $player = $players[$player_id];
-        $player_no = $player['player_no'];
-        $prev_player_no = (($player_no - 1) % 4);
-        if ($prev_player_no == 0) $prev_player_no = 4;
-        $prev_player_id = 0;
-
-        foreach($players as $player_id => $next_player) {
-            if ($next_player['player_no'] == $prev_player_no)
-            {
-                $prev_player_id = $player_id;
-            }
-        }
-
-        return $prev_player_id;
     }
 
     public function getPlayerDirections() {
