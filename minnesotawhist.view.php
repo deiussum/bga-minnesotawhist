@@ -68,6 +68,14 @@
         $this->tpl['TEAM1CLASS'] = 'team-' . strtolower($labels['team1label']);
         $this->tpl['TEAM2CLASS'] = 'team-' . strtolower($labels['team2label']);
 
+        // Fix up for spectator
+        if ($labels['team1label'] == "Team 1") {
+          $this->tpl['TEAM1CLASS'] = 'team-us';
+        }
+        if ($labels['team2label'] == "Team 2") {
+          $this->tpl['TEAM2CLASS'] = 'team-them';
+        }
+
 
         /*********** Do not change anything below this line  ************/
   	}

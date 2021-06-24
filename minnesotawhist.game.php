@@ -180,16 +180,27 @@ class MinnesotaWhist extends Table
         $result['team1tricks'] = $scores['team1tricks'];
         $result['team2tricks'] = $scores['team2tricks'];
 
-        $current_player_team = $players[$current_player_id]['team'];
+        if (array_key_exists($current_player_id, $players)) {
+            $current_player_team = $players[$current_player_id]['team'];
+        }
+        else {
+            // Spectator
+            $current_player_team = 0;
+        }
 
         if ($current_player_team == 1) {
             $result['team1label'] = 'Us';
             $result['team2label'] = 'Them';
         }
-        else {
+        else if ($current_player_team == 2) {
             $result['team1label'] = 'Them';
             $result['team2label'] = 'Us';
         }
+        else {
+            $result['team1label'] = 'Team 1';
+            $result['team2label'] = 'Team 2';
+        }
+
   
         return $result;
     }
@@ -333,10 +344,16 @@ class MinnesotaWhist extends Table
                 "team2label" => "Them"
             );
         }
-        else {
+        else if ($current_team == 2) {
             return array(
                 "team1label" => "Them",
                 "team2label" => "Us"
+            );
+        }
+        else {
+            return array(
+                "team1label" => "Team 1",
+                "team2label" => "Team 2"
             );
         }
     }
