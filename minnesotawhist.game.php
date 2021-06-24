@@ -22,6 +22,20 @@ require_once( APP_GAMEMODULE_PATH.'module/table/table.game.php' );
 
 class MinnesotaWhist extends Table
 {
+    const TEAM_RANDOM = 1;
+    const TEAM_1_3 = 2;
+    const TEAM_1_2 = 3;
+    const TEAM_1_4 = 4;
+
+    const SPADES = 1;
+    const HEARTS = 2;
+    const CLUBS = 3;
+    const DIAMONDS = 4;
+
+    const BIDDING = 0;
+    const PLAYING_LOW = 1;
+    const PLAYING_HIGH = 2;
+
 	function __construct( )
 	{   
 
@@ -47,10 +61,6 @@ class MinnesotaWhist extends Table
 
         $this->cards = self::getNew("module.common.deck");
         $this->cards->init("card");
-        $this->TEAM_RANDOM = 1;
-        $this->TEAM_1_3 = 2;
-        $this->TEAM_1_2 = 3;
-        $this->TEAM_1_4 = 4;
 	}
 	
     protected function getGameName( )
@@ -214,7 +224,7 @@ class MinnesotaWhist extends Table
         // Note: hand types: 0 = bidding
         //                   1 = playing low
         //                   2 = playing high
-        self::setGameStateInitialValue('currentHandType', 0);
+        self::setGameStateInitialValue('currentHandType', self::BIDDING);
         self::setGameStateInitialValue('trickSuit', 0);
         self::setGameStateInitialValue('team1score', 0);
         self::setGameStateInitialValue('team2score', 0);
@@ -238,16 +248,16 @@ class MinnesotaWhist extends Table
 		// Player order based on 'playerTeams' option
 		$playerOrder = [1, 2, 3, 4];
 		switch (self::getGameStateValue('teamOptions')) {
-			case $this->TEAM_1_2:
+			case self::TEAM_1_2:
 				$playerOrder = [1, 3, 2, 4];
 				break;
-			case $this->TEAM_1_4:
+			case self::TEAM_1_4:
 				$playerOrder = [1, 2, 4, 3];
 				break;
-			case $this->TEAM_RANDOM:
+			case self::TEAM_RANDOM:
 				shuffle($playerOrder);
 				break;
-			case $this->TEAM_1_3:
+			case self::TEAM_1_3:
     
 				break;
 		}
@@ -505,7 +515,7 @@ class MinnesotaWhist extends Table
 
         $dealer_id = $this->getGameStateValue('dealer');
         $check_player_id = $dealer_id;
-        $play_mode = 1; // Default to low
+        $play_mode = self::PLAYING_LOW; // Default to low
         $grand_player_id = 0;
 
         for($i = 0; $i < 4; $i++) {
@@ -519,7 +529,7 @@ class MinnesotaWhist extends Table
             $suit = $card['type'];
 
             if ($suit == 1 || $suit == 3) {
-                $play_mode = 2;
+                $play_mode = self::PLAYING_HIGH;
                 $grand_player_id = $check_player_id;
                 break;
             }
@@ -529,7 +539,7 @@ class MinnesotaWhist extends Table
         $player_name = '';
         $next_player = '';
 
-        if ($play_mode == 1) {
+        if ($play_mode == self::PLAYING_LOW) {
             $message = 'All players bid low.';
             $next_player = $this->getPlayerAfter($dealer_id);
         }
@@ -722,26 +732,204 @@ class MinnesotaWhist extends Table
     {
     	$statename = $state['name'];
     	
-        if ($state['type'] === "activeplayer") {
-            switch ($statename) {
-                default:
-                    $this->gamestate->nextState( "zombiePass" );
-                	break;
-            }
-
+        if ($state['type'] === "activeplayer" && $statename === "playerTurn") {
+            $this->zombiePlayCard($active_player);
             return;
         }
 
-        if ($state['type'] === "multipleactiveplayer") {
-            // Make sure player is in a non blocking status for role turn
-            $this->gamestate->setPlayerNonMultiactive( $active_player, '' );
-            
+        if ($state['type'] === "multipleactiveplayer" && $statename === "playBid") {
+            $this->zombieBid($active_player);
             return;
         }
 
         throw new feException( "Zombie mode not supported at this game state: ".$statename );
     }
+
+    function zombieBid($active_player) {
+        $bid_card_id = $this->zombieChooseBidCard($active_player);
+        $card = $this->cards->getCard($bid_card_id);
+
+        $this->cards->moveCard($bid_card_id, 'bidcards', $active_player);
+
+        self::notifyAllPlayers("bidCard", clienttranslate('${player_name} has placed a bid.'), 
+            array( 
+                'player_id' => $active_player,
+                'player_name' => self::getPlayerNameById($active_player)
+            )
+        );
+
+        self::giveExtraTime($active_player);
+        $this->gamestate->setPlayerNonMultiactive($active_player, "showBids");
+    }
+
+    function zombieChooseBidCard($active_player) {
+        $bid_score = $this->getZombieBidScore($active_player);
+
+        $bid_suits = array();
+
+        if ($bid_score >= 13) {
+            $bid_suits[] = self::SPADES; 
+            $bid_suits[] = self::CLUBS; 
+        }
+        else {
+            $bid_suits[] = self::HEARTS; 
+            $bid_suits[] = self::DIAMONDS;
+        }
+
+        $card_id1 = $this->getLowestCardInSuit($active_player, $bid_suits[0]);
+        $card_id2 = $this->getLowestCardInSuit($active_player, $bid_suits[0]);
+
+        $bid_cards = array();
+
+        if ($card_id1 != 0) {
+            $bid_cards[$card_id1] = $this->cards->getCard($card_id1);
+        }
+        if ($card_id2 != 0) {
+            $bid_cards[$card_id2] = $this->cards->getCard($card_id2);
+        }
+
+        if (count($bid_cards) == 2) {
+            return $bid_cards[$card_id1]['type_arg'] < $bid_cards[$card_id2]['type_arg'] 
+                ? $card_id1 : $card_id2;
+        }
+        else if (count($bid_cards) == 1) {
+            return array_keys($bid_cards)[0];
+        }
+        else {
+            // This should be VERY rare
+            return $this->getLowestCard($active_player);
+        }
+    }
+
+    function getZombieBidScore($active_player) {
+        $zombie_cards = $this->cards->getCardsInLocation('hand', $active_player);
+
+        $bidScore = 0;
+
+        foreach($zombie_cards as $card) {
+            if ($card['type_arg'] == 14) $bidScore += 4;
+            else if ($card['type_arg'] == 13) $bidScore += 3;
+            else if ($card['type_arg'] == 12) $bidScore += 2;
+            else if ($card['type_arg'] == 11) $bidScore += 1;
+        }
+
+        return $bidScore;
+    }
+
+    function zombiePlayCard($active_player) {
+        $card_id = $this->zombieChooseCardToPlay($active_player);
+        $currentCard = $this->cards->getCard($card_id);
+
+        $currentTrickSuit = self::getGameStateValue('trickSuit');
+        if ($currentTrickSuit == 0) {
+            self::setGameStateValue('trickSuit', $currentCard['type']);
+        }
+
+        $this->cards->moveCard($card_id, 'cardsontable', $active_player);
+
+        self::notifyAllPlayers('playCard', clienttranslate('${player_name} plays ${value_displayed} ${suit_displayed}'), 
+            array(
+                'i18n' =>array('suit_displayed', 'value_displayed'), 
+                'card_id' => $card_id, 
+                'player_id' => $active_player,
+                'player_name' => self::getPlayerNameById($active_player),
+                'value' => $currentCard['type_arg'], 
+                'value_displayed' => $this->values_label[$currentCard ['type_arg']],
+                'suit' => $currentCard['type'],
+                'suit_displayed' => $this->suits[$currentCard['type']]['name']
+            )
+        );
+
+        $this->gamestate->nextState('playCard');
+    }
+
+    function zombieChooseCardToPlay($active_player) {
+        $currentMode = $this->getGameStateValue("currentHandType");
+        $cardsOnTable = $this->cards->getCardsInLocation("cardsontable");
+        $initialCard = count($cardsOnTable) == 0;
+        $currentSuit = $this->getGameStateValue("trickSuit");
+
+        if ($initialCard && $currentMode == self::PLAYING_HIGH) {
+            return $this->getHighestCard($active_player);
+        }
+        else if ($initialCard && $currentMode == self::PLAYING_HIGH) {
+            return $this->getLowestCard($active_player);
+        }
+        else if ($currentMode == self::PLAYING_HIGH) {
+            $suit_card = $this->getHighestCardInSuit($active_player, $currentSuit);
+            return $suit_card != 0 ? $suit_card : $this->getHighestCard($active_player);
+        }
+        else if ($currentMode == self::PLAYING_LOW) {
+            $suit_card = $this->getLowestCardInSuit($active_player, $currentSuit);
+            return $suit_card != 0 ? $suit_card : $this->getLowestCard($active_player);
+        }
+
+        // This should never happen
+        throw new feException( "Zombie could not select a card.");
+    }
+
+    function getLowestCardInSuit($active_player, $suit) {
+        $low_card_id = 0;
+        $zombie_cards = $this->cards->getCardsInLocation('hand', $active_player);
+        $lowestValue = 0;
+
+        foreach($zombie_cards as $card_id => $card) {
+            if ($card['type'] != $suit) continue;
+            if ($low_card_id == 0 || $card['type_arg'] < $lowestValue) {
+                $low_card_id = $card_id;
+                $lowestValue = $card['type_arg'];
+            }
+        }
+
+        return $low_card_id;
+    }
+
+    function getHighestCardInSuit($active_player, $suit) {
+        $high_card_id = 0;
+        $zombie_cards = $this->cards->getCardsInLocation('hand', $active_player);
+        $highestValue = 0;
+
+        foreach($zombie_cards as $card_id => $card) {
+            if ($card['type'] != $suit) continue;
+            if ($high_card_id == 0 || $card['type_arg'] > $highestValue) {
+                $high_card_id = $card_id;
+                $highestValue = $card['type_arg'];
+            }
+        }
+
+        return $high_card_id;
+    }
     
+    function getLowestCard($active_player) {
+        $low_card_id = 0;
+        $zombie_cards = $this->cards->getCardsInLocation('hand', $active_player);
+        $lowestValue = 0;
+
+        foreach($zombie_cards as $card_id => $card) {
+            if ($low_card_id == 0 || $card['type_arg'] < $lowestValue) {
+                $low_card_id = $card_id;
+                $lowestValue = $card['type_arg'];
+            }
+        }
+
+        return $low_card_id;
+    }
+
+    function getHighestCard($active_player) {
+        $high_card_id = 0;
+        $zombie_cards = $this->cards->getCardsInLocation('hand', $active_player);
+        $highestValue = 0;
+
+        foreach($zombie_cards as $card_id => $card) {
+            if ($high_card_id == 0 || $card['type_arg'] > $highestValue) {
+                $high_card_id = $card_id;
+                $highestValue = $card['type_arg'];
+            }
+        }
+
+        return $high_card_id;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////:
 ////////// DB upgrade
 //////////
