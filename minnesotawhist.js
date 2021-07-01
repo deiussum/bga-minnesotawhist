@@ -30,7 +30,7 @@ function (dojo, declare) {
             // Example:
             // this.myGlobalValue = 0;
             
-            this.cardwidth = 72;
+            this.cardwidth = 70;
             this.cardheight = 96;
 
             this.team1score_counter = new ebg.counter();
@@ -76,19 +76,40 @@ function (dojo, declare) {
 
             var grand_player_id = this.gamedatas.grand_player_id;
             this.updateGrandIcon(grand_player_id);
+
+            var cardUrl = 'img/cards_traditional_classic.jpg'
+            switch (this.prefs[100].value) {
+                case '1':
+                    cardUrl = 'img/cards_design_4color.jpg';
+                    break;
+                case '2':
+                    cardUrl = 'img/cards_design_classic.jpg'
+                    break;
+                case '3': 
+                    cardUrl = 'img/cards_traditional_4color.jpg'; 
+                    break;
+                case '4': 
+                    cardUrl = 'img/cards_traditional_classic.jpg'; 
+                    break;
+            }
+
+            this.sizeCardsToWindow();
+            window.addEventListener('resize', this.onWindowResize);
             
             this.playerHand = new ebg.stock();
             this.playerHand.create(this, $('myhand'), this.cardwidth, this.cardheight);
             this.playerHand.image_items_per_row = 13;
             this.playerHand.centerItems = true;
+            this.playerHand.extraClasses = 'card';
             this.playerHand.setOverlap(60, 0);
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
+
             for(var suit=1; suit <= 4; suit++) {
                 for(var value=2; value <= 14; value++) {
                     var cardTypeId = this.getCardUniqueType(suit, value);
-                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/cards.jpg', cardTypeId);
+                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + cardUrl, cardTypeId);
                 }
             }
 
@@ -227,14 +248,32 @@ function (dojo, declare) {
             script.
         
         */
+        sizeCardsToWindow: function() {
+            if (window.innerWidth >= 3000) {
+                this.cardwidth = 280;
+                this.cardheight = 384;
+            }
+            else if (window.innerWidth >= 2000 ) {
+                this.cardwidth = 186;
+                this.cardheight = 255;
+            }
+            else if (window.innerWidth >= 1500) {
+                this.cardwidth = 134;
+                this.cardheight = 183;
+            }
+            else {
+                this.cardwidth = 70;
+                this.cardheight = 96;
+            }
+        },
         getCardUniqueType: function(suit, value) {
             return (suit - 1) * 13 + (value - 2);
         },
 
         playCardOnTable: function(player_id, suit, value, card_id) {
             dojo.place(this.format_block('jstpl_cardontable', {
-                x: this.cardwidth * (value - 2),
-                y: this.cardheight * (suit - 1),
+                x: (value - 2) * 100,
+                y: (suit - 1) * 100,
                 player_id: player_id
 
             }), 'playertablecard_' + player_id);
@@ -254,8 +293,8 @@ function (dojo, declare) {
 
         showFlippedCard: function(player_id, suit, value, card_id) {
             dojo.place(this.format_block('jstpl_cardontable', {
-                x: this.cardwidth * (value - 2),
-                y: this.cardheight * (suit - 1),
+                x: (value - 2) * 100,
+                y: (suit - 1) * 100,
                 player_id: player_id
 
             }), 'cardontable_' + player_id);
@@ -398,6 +437,12 @@ function (dojo, declare) {
                     this.playerHand.unselectAll();
                 }
             }
+        },
+        onWindowResize: function() {
+            gameui.sizeCardsToWindow();
+            gameui.playerHand.item_width = gameui.cardwidth;
+            gameui.playerHand.item_height = gameui.cardheight;
+            gameui.playerHand.updateDisplay();
         },
         
         ///////////////////////////////////////////////////

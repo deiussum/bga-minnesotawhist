@@ -41,4 +41,20 @@ $game_options = array(
 
 );
 
+$game_preferences = array(
+    100 => array(
+        'name' => totranslate('Card sprites'),
+        'needReload' => true,
+        'values' => array(
+            1 => array('name' => totranslate('Design - 4-color'), 'cssPref' => 'cards_design_4color'),
+            2 => array('name' => totranslate('Design - Classic'), 'cssPref' => 'cards_design_classic'),
+            3 => array('name' => totranslate('Traditional - 4-color'), 'cssPref' => 'cards_traditional_4color'),
+            4 => array('name' => totranslate('Traditional - Classic'), 'cssPref' => 'cards_traditional_classic')
+
+        ),
+        'default' => 4
+
+    )
+);
+
 
