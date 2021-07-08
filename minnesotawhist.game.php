@@ -526,11 +526,16 @@ class MinnesotaWhist extends Table
         $this->cards->shuffle('deck');
         self::setGameStateValue('team1tricks', 0);
         self::setGameStateValue('team2tricks', 0);
+        self::setGameStateValue('currentHandType', self::BIDDING);
 
         $players = self::loadPlayersBasicInfos();
         foreach($players as $player_id => $player) {
             $cards = $this->cards->pickCards(13, 'deck', $player_id);
-            self::notifyPlayer($player_id, 'newHand', '', array('cards' => $cards));
+            self::notifyPlayer($player_id, 'newHand', '', array(
+                'cards' => $cards,
+                'hand_type' => self::BIDDING,
+                'hand_type_text' => $this->getHandTypeText()
+            ));
         }
         $this->gamestate->nextState("");
     }

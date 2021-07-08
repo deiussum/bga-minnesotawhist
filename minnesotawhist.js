@@ -143,10 +143,12 @@ function (dojo, declare) {
             this.team1tricks_counter.create("team1-tricks");
             this.team1tricks_counter.setValue(this.gamedatas.team1tricks);
             this.addIconToTeamTricks(1, this.gamedatas.team1tricks);
+            //this.addIconToTeamTricks(1, 13); // Test full trick display
 
             this.team2tricks_counter.create("team2-tricks");
             this.team2tricks_counter.setValue(this.gamedatas.team2tricks);
             this.addIconToTeamTricks(2, this.gamedatas.team2tricks);
+            //this.addIconToTeamTricks(2, 13); // Test full trick display
 
             this.updatePlayMode(this.gamedatas.hand_type, this.gamedatas.hand_type_text);
  
@@ -490,6 +492,7 @@ function (dojo, declare) {
                 var value = card.type_arg;
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
             }
+            this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
         },
 
         notif_bidCard: function(notif) {

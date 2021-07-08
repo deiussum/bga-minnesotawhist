@@ -298,30 +298,9 @@
         width: 1200px;
     }
 
-    .icon {
-        width: 27px;
-        height: 30px;
-        background-size: 108px 30px;
-    }
-
-    .icon-grand {
-        background-position-x: -27px;
-        background-position-y: 0;
-    }
-
-    .icon-cardback {
-        background-position-x: -54px;
-        background-position-y: 0;
-    }
-
-    .cards_traditional_4color .icon-cardback, .cards_traditional_classic .icon-cardback {
-        background-position-x: -81px;
-        background-position-y: 0;
-    }
-
     .team-info-box {
         width: 140px;
-        height: 90px;
+        height: 80px;
         padding-top: 5px;
     }
 
@@ -330,7 +309,7 @@
     }
 
     .team-tricks .icon {
-        margin-left: -18px;
+        margin-left: -10px;
     }
 }
 
@@ -350,6 +329,15 @@
         text-align: center;
         width: 268px;
         height: 310px;
+    }
+
+    .playertablename, .team-info-box, #playmode {
+        font-size: 1.5em;
+    }
+
+    #playmode-wrap {
+        width: 150px;
+        height: 30px;
     }
 
     .playertable_N {
@@ -408,9 +396,13 @@
     }
 
     .team-info-box {
-        width: 140px;
-        height: 90px;
+        width: 145px;
+        height: 125px;
         padding-top: 5px;
+    }
+
+    .team-info-box h3 {
+        font-size: 1.2em;
     }
 
     .team-tricks {
@@ -440,6 +432,15 @@
         text-align: center;
         width: 400px;
         height: 460px;
+    }
+
+    .playertablename, #playmode {
+        font-size: 1.8em;
+    }
+
+    #playmode-wrap {
+        width: 180px;
+        height: 30px;
     }
 
     .playertable_N {
@@ -499,8 +500,13 @@
 
     .team-info-box {
         width: 200px;
-        height: 110px;
+        height: 135px;
         padding-top: 5px;
+        font-size: 1.5em;
+    }
+
+    .team-info-box h3 {
+        font-size: 1.2em;
     }
 
     .team-tricks {
