@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * MinnesotaWhist implementation : © <Your name here> <Your email address here>
+ * MinnesotaWhist implementation : © Daniel Jenkins <deiussum@gmail.com>
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -48,24 +48,478 @@
 
 /********* You can start writing your CSS below this line: **********/
 
-
 /*
-    Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):
+    Standard resolutions
+    4k      - 3840 x 2160
+    1440p   - 2560 x 1440
+    1080p   - 1920 x 1080
 
-    .white_token {
-        background-image: url('img/tokens.png');
-        background-position: 0px 0px;
-    }
-    .black_token {
-        background-image: url('img/tokens.png');
-        background-position: -20px 0px;
-    }
-    .token {
-        width: 20px;
-        height: 20px;
-        background-repeat: none;
-    }
+    Breakpoints
+    4k      - 3000px
+    1440p   - 2000px
+    1080p   - 1500px
+
+    Table Sizes
+    4k      -  2500 x 1200
+    1440p   -  1667 x 800
+    1080p   -  1200 x 576
+    Small   -  710 x 340
+
+    Card Sizes
+    4k      - 280 x 384
+    1440p   - 186 x 255
+    1080p   - 134 x 183
+    Small   - 70 x 96
 */
+.playertablecard {
+    display: inline-block;
+    position: relative;
+    width: 70px;
+    height: 96px;
+    border: 2px solid #FFFFFF55;
+}
+
+
+#playertables {
+    position: relative;
+    width: 710px;
+    height: 340px;
+    margin-left: auto;
+    margin-right: auto;
+    background-image: url('img/table.jpg');
+    background-size: 710px 340px;
+    border-radius: 0.5em;
+}
+
+
+.playerheader.whiteblock {
+    padding: 5px;
+    margin: 5px;
+    vertical-align: middle;
+    justify-content: center;
+    display: flex;
+}
+
+.playertablename {
+    display: inline-block;
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.playertable {
+    position: absolute;
+    text-align: center;
+    width: 180px;
+    height: 140px;
+}
+
+.playertable_N {
+    left: 50%;
+    top: 5px;
+    margin-left: -90px; /* half of 180 */
+}
+
+.playertable_S {
+    left: 50%;
+    bottom: 5px;
+    margin-left: -90px; /* half of 180 */
+}
+
+.playertable_W {
+    left: 10px;
+    top: 50%;
+    margin-top: -55px; /* half of 130 */
+}
+
+.playertable_E {
+    right: 10px;
+    top: 50%;
+    margin-top: -55px; /* half of 130 */
+}
+
+.card {
+    position: absolute;
+    width: 70px !important;
+    height: 96px !important;
+    background-size: 1050px 384px;
+    border: 1px solid lightgray !important;
+    border-radius: 5px;
+    background-image: url('img/cards_traditional_classic.jpg');
+}
+
+.cards_design_4color .cardontable {
+    background-image: url('img/cards_design_4color.jpg');
+}
+
+.cards_design_classic .cardontable {
+    background-image: url('img/cards_design_classic.jpg');
+}
+
+.cards_traditional_4color .cardontable {
+    background-image: url('img/cards_traditional_4color.jpg');
+}
+
+.cards_traditional_classic .cardontable {
+    background-image: url('img/cards_traditional_classic.jpg');
+}
+
+.card.flipped {
+    background-position: -980px 0;
+}
+
+#myhand-wrap {
+    width: 710px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#myhand-wrap h3 {
+    text-align: center;
+}
+
+.team-info-box {
+    width: 115px;
+    height: 78px;
+    padding-top: 5px;
+}
+
+.team-tricks {
+    margin-left: 3px;
+}
+
+.team-tricks .icon {
+    margin-left: -10px;
+}
+
+.team-us {
+    position: absolute;
+    top: 5px;
+    left: 10px;
+}
+
+.team-them {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+}
+
+#playmode-wrap {
+    position: absolute;
+    width: 100px;
+    height: 20px;
+    left: 10px;
+    bottom: 5px;
+    font-weight: bold;
+}
+
+.red-text {
+    color: red;
+}
+
+.icon {
+    display: inline-block;
+    width: 18px;
+    height: 20px;
+    background-image: url('img/icons.png');
+    background-size: 72px 20px;
+    margin: 0;
+}
+
+.icon-dealer {
+    background-position-x: 0;
+    background-position-y: 0;
+}
+
+.icon-grand {
+    background-position-x: -18px;
+    background-position-y: 0;
+}
+
+.icon-cardback {
+    background-position-x: -36px;
+    background-position-y: 0;
+}
+
+.cards_traditional_4color .icon-cardback, .cards_traditional_classic .icon-cardback {
+    background-position-x: -54px;
+    background-position-y: 0;
+}
+
+@media screen and (min-width: 1500px) and (max-width: 1999px) {
+    #playertables {
+        width: 1200px;
+        height: 576px;
+        background-size: 1200px 576px;
+    }
+
+    .playertablecard {
+        width: 134px;
+        height: 183px;
+    }
+
+    .playertable {
+        position: absolute;
+        text-align: center;
+        width: 250px;
+        height: 250px;
+    }
+
+    .playertable_N {
+        top: 5px;
+        margin-left: -125px; 
+    }
+
+    .playertable_S {
+        bottom: 5px;
+        margin-left: -125px; 
+    }
+
+    .playertable_W {
+        left: 10px;
+        margin-top: -100px; 
+    }
+
+    .playertable_E {
+        right: 10px;
+        margin-top: -100px; 
+    }
+
+    .card {
+        width: 134px !important;
+        height: 183px !important;
+        background-size: 2010px 732px;
+        border-radius: 9px;
+    }
+    .card.flipped {
+        background-position: -1876px 0;
+    }
+
+    #myhand-wrap {
+        width: 1200px;
+    }
+
+    .team-info-box {
+        width: 140px;
+        height: 80px;
+        padding-top: 5px;
+    }
+
+    .team-tricks {
+        margin-left: 12px;
+    }
+
+    .team-tricks .icon {
+        margin-left: -10px;
+    }
+}
+
+@media screen and (min-width: 2000px) and (max-width: 2999px) {
+    #playertables {
+        width: 1667px;
+        height: 800px;
+        background-size: 1667px 800px;
+    }
+    .playertablecard {
+        width: 186px;
+        height: 255px;
+    }
+
+    .playertable {
+        position: absolute;
+        text-align: center;
+        width: 268px;
+        height: 310px;
+    }
+
+    .playertablename, .team-info-box, #playmode {
+        font-size: 1.5em;
+    }
+
+    #playmode-wrap {
+        width: 150px;
+        height: 30px;
+    }
+
+    .playertable_N {
+        top: 5px;
+        margin-left: -134px; 
+    }
+
+    .playertable_S {
+        bottom: 5px;
+        margin-left: -134px; 
+    }
+
+    .playertable_W {
+        left: 10px;
+        margin-top: -150px; 
+    }
+
+    .playertable_E {
+        right: 10px;
+        margin-top: -150px; 
+    }
+
+    .card {
+        width: 186px !important;
+        height: 255px !important;
+        background-size: 2790px 1020px;
+        border-radius: 12px;
+    }
+    .card.flipped {
+        background-position: -2604px 0;
+    }
+
+    #myhand-wrap {
+        width: 1667px;
+    }
+
+    .icon {
+        width: 27px;
+        height: 30px;
+        background-size: 108px 30px;
+    }
+
+    .icon-grand {
+        background-position-x: -27px;
+        background-position-y: 0;
+    }
+
+    .icon-cardback {
+        background-position-x: -54px;
+        background-position-y: 0;
+    }
+
+    .cards_traditional_4color .icon-cardback, .cards_traditional_classic .icon-cardback {
+        background-position-x: -81px;
+        background-position-y: 0;
+    }
+
+    .team-info-box {
+        width: 145px;
+        height: 125px;
+        padding-top: 5px;
+    }
+
+    .team-info-box h3 {
+        font-size: 1.2em;
+    }
+
+    .team-tricks {
+        margin-left: 12px;
+    }
+
+    .team-tricks .icon {
+        margin-left: -18px;
+    }
+}
+
+
+@media screen and (min-width: 3000px) {
+    #playertables {
+        width: 2500px;
+        height: 1200px;
+        background-size: 2500px 1198px;
+    }
+
+    .playertablecard {
+        width: 280px;
+        height: 384px;
+    }
+
+    .playertable {
+        position: absolute;
+        text-align: center;
+        width: 400px;
+        height: 460px;
+    }
+
+    .playertablename, #playmode {
+        font-size: 1.8em;
+    }
+
+    #playmode-wrap {
+        width: 180px;
+        height: 30px;
+    }
+
+    .playertable_N {
+        top: 5px;
+        margin-left: -200px; 
+    }
+
+    .playertable_S {
+        bottom: 5px;
+        margin-left: -200px; 
+    }
+
+    .playertable_W {
+        left: 10px;
+        margin-top: -225px; 
+    }
+
+    .playertable_E {
+        right: 10px;
+        margin-top: -225px; 
+    }
+
+    .card {
+        width: 280px !important;
+        height: 384px !important;
+        background-size: 4200px 1536px;
+        border-radius: 19px;
+    }
+    .card.flipped {
+        background-position: -3920px 0;
+    }
+
+    #myhand-wrap {
+        width: 2500px;
+    }
+
+    .icon {
+        width: 36px;
+        height: 40px;
+        background-size: 144px 40px;
+    }
+
+    .icon-grand {
+        background-position-x: -36px;
+        background-position-y: 0;
+    }
+
+    .icon-cardback {
+        background-position-x: -72px;
+        background-position-y: 0;
+    }
+
+    .cards_traditional_4color .icon-cardback, .cards_traditional_classic .icon-cardback {
+        background-position-x: -108px;
+        background-position-y: 0;
+    }
+
+    .team-info-box {
+        width: 200px;
+        height: 135px;
+        padding-top: 5px;
+        font-size: 1.5em;
+    }
+
+    .team-info-box h3 {
+        font-size: 1.2em;
+    }
+
+    .team-tricks {
+        margin-left: 20px;
+    }
+
+    .team-tricks .icon {
+        margin-left: -24px;
+    }
+}
+
+
+
 
 
 

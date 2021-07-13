@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * MinnesotaWhist implementation : © <Your name here> <Your email address here>
+ * MinnesotaWhist implementation : © Daniel Jenkins <deiussum@gmail.com>
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -18,7 +18,8 @@
 define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
-    "ebg/counter"
+    "ebg/counter",
+    "ebg/stock"
 ],
 function (dojo, declare) {
     return declare("bgagame.minnesotawhist", ebg.core.gamegui, {
@@ -28,7 +29,14 @@ function (dojo, declare) {
             // Here, you can init the global variables of your user interface
             // Example:
             // this.myGlobalValue = 0;
+            
+            this.cardwidth = 70;
+            this.cardheight = 96;
 
+            this.team1score_counter = new ebg.counter();
+            this.team2score_counter = new ebg.counter();
+            this.team1tricks_counter = new ebg.counter();
+            this.team2tricks_counter = new ebg.counter();
         },
         
         /*
@@ -47,17 +55,102 @@ function (dojo, declare) {
         setup: function( gamedatas )
         {
             console.log( "Starting game setup" );
+
+            var teamLabels = [ gamedatas.team1label, gamedatas.team2label ];
             
             // Setting up player boards
             for( var player_id in gamedatas.players )
             {
                 var player = gamedatas.players[player_id];
                          
-                // TODO: Setting up players boards if needed
+                // Setting up players boards 
+                dojo.place(this.format_block('jstpl_teamlabel', {
+                    team_label: teamLabels[player.team - 1],
+                    player_id: player_id
+                }), 'player_board_' + player_id);
+
             }
+
+            var dealer_player_id = this.gamedatas.dealer_player_id;
+            this.updateDealerIcon(dealer_player_id);
+
+            var grand_player_id = this.gamedatas.grand_player_id;
+            this.updateGrandIcon(grand_player_id);
+
+            var cardUrl = 'img/cards_traditional_classic.jpg'
+            switch (this.prefs[100].value) {
+                case '1':
+                    cardUrl = 'img/cards_design_4color.jpg';
+                    break;
+                case '2':
+                    cardUrl = 'img/cards_design_classic.jpg'
+                    break;
+                case '3': 
+                    cardUrl = 'img/cards_traditional_4color.jpg'; 
+                    break;
+                case '4': 
+                    cardUrl = 'img/cards_traditional_classic.jpg'; 
+                    break;
+            }
+
+            this.sizeCardsToWindow();
+            window.addEventListener('resize', this.onWindowResize);
             
-            // TODO: Set up your game interface here, according to "gamedatas"
-            
+            this.playerHand = new ebg.stock();
+            this.playerHand.create(this, $('myhand'), this.cardwidth, this.cardheight);
+            this.playerHand.image_items_per_row = 13;
+            this.playerHand.centerItems = true;
+            this.playerHand.extraClasses = 'card';
+            this.playerHand.setOverlap(60, 0);
+
+            dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
+
+
+            for(var suit=1; suit <= 4; suit++) {
+                for(var value=2; value <= 14; value++) {
+                    var cardTypeId = this.getCardUniqueType(suit, value);
+                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + cardUrl, cardTypeId);
+                }
+            }
+
+            for(var i in this.gamedatas.hand) {
+                var card = this.gamedatas.hand[i];
+                var suit = card.type;
+                var value = card.type_arg;
+                this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
+            }
+
+            for(var i in this.gamedatas.cardsontable) {
+                var card = this.gamedatas.cardsontable[i];
+                var suit = card.type;
+                var value = card.type_arg;
+                var player_id = card.location_arg;
+                this.playCardOnTable(player_id, suit, value, card.id);
+            }
+
+            for(var i in this.gamedatas.bids) {
+                var player_id = this.gamedatas.bids[i];
+                this.playFlippedCard(player_id);
+            }
+
+            // setup counters
+            this.team1score_counter.create("team1-score");
+            this.team1score_counter.setValue(this.gamedatas.team1score);
+
+            this.team2score_counter.create("team2-score");
+            this.team2score_counter.setValue(this.gamedatas.team2score);
+
+            this.team1tricks_counter.create("team1-tricks");
+            this.team1tricks_counter.setValue(this.gamedatas.team1tricks);
+            this.addIconToTeamTricks(1, this.gamedatas.team1tricks);
+            //this.addIconToTeamTricks(1, 13); // Test full trick display
+
+            this.team2tricks_counter.create("team2-tricks");
+            this.team2tricks_counter.setValue(this.gamedatas.team2tricks);
+            this.addIconToTeamTricks(2, this.gamedatas.team2tricks);
+            //this.addIconToTeamTricks(2, 13); // Test full trick display
+
+            this.updatePlayMode(this.gamedatas.hand_type, this.gamedatas.hand_type_text);
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -157,7 +250,146 @@ function (dojo, declare) {
             script.
         
         */
+        sizeCardsToWindow: function() {
+            if (window.innerWidth >= 3000) {
+                this.cardwidth = 280;
+                this.cardheight = 384;
+            }
+            else if (window.innerWidth >= 2000 ) {
+                this.cardwidth = 186;
+                this.cardheight = 255;
+            }
+            else if (window.innerWidth >= 1500) {
+                this.cardwidth = 134;
+                this.cardheight = 183;
+            }
+            else {
+                this.cardwidth = 70;
+                this.cardheight = 96;
+            }
+        },
+        getCardUniqueType: function(suit, value) {
+            return (suit - 1) * 13 + (value - 2);
+        },
 
+        playCardOnTable: function(player_id, suit, value, card_id) {
+            dojo.place(this.format_block('jstpl_cardontable', {
+                x: (value - 2) * 100,
+                y: (suit - 1) * 100,
+                player_id: player_id
+
+            }), 'playertablecard_' + player_id);
+
+            if (player_id != this.player_id) {
+                this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+            }
+            else {
+                if ($('myhand_item_' + card_id)) {
+                    this.placeOnObject('cardontable_' + player_id, 'myhand_item_' + card_id);
+                    this.playerHand.removeFromStockById(card_id);
+                }
+            }
+
+            this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
+        },
+
+        showFlippedCard: function(player_id, suit, value, card_id) {
+            dojo.place(this.format_block('jstpl_cardontable', {
+                x: (value - 2) * 100,
+                y: (suit - 1) * 100,
+                player_id: player_id
+
+            }), 'cardontable_' + player_id);
+        },
+
+        playFlippedCard: function(player_id, card_id) {
+            dojo.place(this.format_block('jstpl_flippedcard', {
+                player_id: player_id
+            }), 'playertablecard_' + player_id);
+
+            if (player_id != this.player_id ) {
+                this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+            }
+            else {
+                this.placeOnObject('cardontable_' + player_id, 'myhand');
+            }
+
+            this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
+        },
+
+        updatePlayMode: function(handType, handTypeText) {
+            console.log("Hand type:" + handTypeText);
+            var node = dojo.byId('playmode');
+            node.innerText = handTypeText;
+
+            if (handType == 1) {
+                node.classList.add('red-text');
+            }
+            else {
+                node.classList.remove('red-text');
+            }
+        },
+
+        updateDealerIcon: function(dealer_id) {
+            console.log("Dealer is " + dealer_id);
+
+            var nodes = dojo.query(".icon-dealer");
+            for(var i=0; i<nodes.length; i++) {
+                var node = nodes[i];
+                node.parentNode.removeChild(node);
+            }
+
+            dojo.place(this.format_block('jstpl_icon', {
+                icon: 'icon-dealer',
+                icon_text: 'Dealer'
+            }), 'playericons_' + dealer_id);
+
+            dojo.place(this.format_block('jstpl_icon', {
+                icon: 'icon-dealer',
+                icon_text: 'Dealer'
+            }), 'icons_' + dealer_id);
+        },
+
+        updateGrandIcon: function(grand_player_id) {
+            console.log("Grand player is " + grand_player_id);
+
+            var nodes = dojo.query(".icon-grand");
+            for(var i=0; i<nodes.length; i++) {
+                var node = nodes[i];
+                node.parentNode.removeChild(node);
+            }
+
+            if (grand_player_id == null || grand_player_id == undefined || grand_player_id == 0) return;
+
+            dojo.place(this.format_block('jstpl_icon', {
+                icon: 'icon-grand',
+                icon_text: 'Granded'
+            }), 'playericons_' + grand_player_id);
+
+            dojo.place(this.format_block('jstpl_icon', {
+                icon: 'icon-grand',
+                icon_text: 'Granded'
+            }), 'icons_' + grand_player_id);
+        },
+
+        addIconToTeamTricks: function(team, count) {
+            if (count === undefined) count = 1;
+
+            for(var i=0;i<count; i++) {
+                dojo.place(this.format_block('jstpl_icon', {
+                    icon: 'icon-cardback',
+                    icon_text: 'Tricks'
+                }), "team" + team + "-trick-icons");
+            }
+        },
+
+        clearTeamTrickIcons: function() {
+            var nodes = dojo.query(".icon-cardback");
+            for(var i=0; i<nodes.length; i++) {
+                var node = nodes[i];
+                node.parentNode.removeChild(node);
+            }
+        },
 
         ///////////////////////////////////////////////////
         //// Player's action
@@ -172,41 +404,48 @@ function (dojo, declare) {
             _ make a call to the game server
         
         */
-        
-        /* Example:
-        
-        onMyMethodToCall1: function( evt )
-        {
-            console.log( 'onMyMethodToCall1' );
-            
-            // Preventing default browser reaction
-            dojo.stopEvent( evt );
+        onPlayerHandSelectionChanged: function() {
+            var items = this.playerHand.getSelectedItems();
 
-            // Check that this action is possible (see "possibleactions" in states.inc.php)
-            if( ! this.checkAction( 'myAction' ) )
-            {   return; }
+            if (items.length > 0) {
+                var action = 'playCard';
+                if (this.checkAction(action, true)) {
+                    var card_id = items[0].id;
+                    console.log('on playCard ' + card_id);
 
-            this.ajaxcall( "/minnesotawhist/minnesotawhist/myAction.html", { 
-                                                                    lock: true, 
-                                                                    myArgument1: arg1, 
-                                                                    myArgument2: arg2,
-                                                                    ...
-                                                                 }, 
-                         this, function( result ) {
-                            
-                            // What to do after the server call if it succeeded
-                            // (most of the time: nothing)
-                            
-                         }, function( is_error) {
+                    this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/" + action + ".html", {
+                        id: card_id,
+                        lock: true
+                    },this
+                    , function(result) { }
+                    , function(is_error) { }
+                    );
 
-                            // What to do after the server call in anyway (success or failure)
-                            // (most of the time: nothing)
+                    this.playerHand.unselectAll();
+                }
+                else if (this.checkAction('playBid')) {
+                    var card_id = items[0].id;
+                    console.log('on playCard ' + card_id);
 
-                         } );        
-        },        
-        
-        */
-
+                    this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/playBid.html", {
+                        id: card_id,
+                        lock: true
+                    },this
+                    , function(result) { }
+                    , function(is_error) { }
+                    );
+                }
+                else {
+                    this.playerHand.unselectAll();
+                }
+            }
+        },
+        onWindowResize: function() {
+            gameui.sizeCardsToWindow();
+            gameui.playerHand.item_width = gameui.cardwidth;
+            gameui.playerHand.item_height = gameui.cardheight;
+            gameui.playerHand.updateDisplay();
+        },
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -224,34 +463,122 @@ function (dojo, declare) {
         {
             console.log( 'notifications subscriptions setup' );
             
-            // TODO: here, associate your game notifications with local methods
+            // associate your game notifications with local methods
             
-            // Example 1: standard notification handling
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            
-            // Example 2: standard notification handling + tell the user interface to wait
-            //            during 3 seconds after calling the method in order to let the players
-            //            see what is happening in the game.
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
-            // 
+            dojo.subscribe('newHand', this, "notif_newHand");
+            dojo.subscribe('playCard', this, "notif_playCard");
+            dojo.subscribe('trickWin', this, "notif_trickWin");
+            this.notifqueue.setSynchronous('trickWin', 1000);
+            dojo.subscribe('giveAllCardsToPlayer', this, "notif_giveAllCardsToPlayer");
+            dojo.subscribe('newScores', this, "notif_newScores");
+
+            dojo.subscribe('bidCard', this, "notif_bidCard");
+            dojo.subscribe('bidsShown', this, "notif_bidsShown");
+            this.notifqueue.setSynchronous('bidsShown', 1000);
+
+            dojo.subscribe('removeCard', this, 'notif_removeCard');
+            dojo.subscribe('clearBids', this, "notif_clearBids");
+            dojo.subscribe('returnCard', this, "notif_returnCard");
         },  
         
-        // TODO: from this point and below, you can write your game notifications handling methods
+        // from this point and below, you can write your game notifications handling methods
         
-        /*
-        Example:
-        
-        notif_cardPlayed: function( notif )
-        {
-            console.log( 'notif_cardPlayed' );
-            console.log( notif );
-            
-            // Note: notif.args contains the arguments specified during you "notifyAllPlayers" / "notifyPlayer" PHP call
-            
-            // TODO: play the card in the user interface.
-        },    
-        
-        */
+        notif_newHand: function(notif) {
+            this.playerHand.removeAll();
+
+            for(var i in notif.args.cards) {
+                var card = notif.args.cards[i];
+                var suit = card.type;
+                var value = card.type_arg;
+                this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
+            }
+            this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
+        },
+
+        notif_bidCard: function(notif) {
+            this.playFlippedCard(notif.args.player_id, notif.args.card_id);
+        },
+
+        notif_removeCard: function(notif) {
+            this.playerHand.removeFromStockById(notif.args.card_id);
+        },
+
+        notif_bidsShown: function(notif) {
+            for(var i in notif.args.bid_cards) {
+                var card = notif.args.bid_cards[i];
+                var suit = card.type;
+                var value = card.type_arg;
+                var player_id = card.location_arg;
+                this.showFlippedCard(player_id, suit, value, card.id);
+            }
+            this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
+            this.updateGrandIcon(notif.args.grand_player_id);
+        },
+
+        notif_clearBids: function(notif) {
+            for(var player_id in this.gamedatas.players) {
+                var anim = this.slideToObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+                dojo.connect(anim, 'onEnd', function(node) {
+                    dojo.destroy(node);
+                });
+                anim.play();
+            }
+        },
+
+        notif_returnCard: function(notif) {
+            var card = notif.args.bid_card;
+            var suit = card.type;
+            var value = card.type_arg;
+
+            this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
+        },
+
+        notif_playCard: function(notif) {
+            this.playCardOnTable(notif.args.player_id, notif.args.suit, notif.args.value, notif.args.card_id);
+        },
+
+        notif_trickWin: function(notif) {
+            if (notif.args.team == 1) {
+                this.team1tricks_counter.incValue(1);
+                this.addIconToTeamTricks(1);
+            }
+            else if (notif.args.team == 2) {
+                this.team2tricks_counter.incValue(1);
+                this.addIconToTeamTricks(2);
+            }
+        },
+
+        notif_giveAllCardsToPlayer: function(notif) {
+            var winner_id = notif.args.player_id;
+
+            for(var player_id in this.gamedatas.players) {
+                var anim = this.slideToObject('cardontable_' + player_id, 'cardontable_' + winner_id);
+                dojo.connect(anim, 'onEnd', function(node) {
+                    dojo.destroy(node);
+                });
+                anim.play();
+            }
+        },
+
+        notif_newScores: function(notif) {
+            for(var player_id in notif.args.newScores) {
+                this.scoreCtrl[player_id].toValue(notif.args.newScores[player_id]);
+            }
+
+            if (notif.args.scoring_team == 1) {
+                this.team1score_counter.incValue(notif.args.points);
+            }
+            if (notif.args.scoring_team == 2) {
+                this.team2score_counter.incValue(notif.args.points);
+            }
+
+            this.team1tricks_counter.setValue(0);
+            this.team2tricks_counter.setValue(0);
+            this.clearTeamTrickIcons();
+
+            var dealer_id = notif.args.dealer_id;
+            this.updateDealerIcon(dealer_id);
+            this.updateGrandIcon(0);
+        }
    });             
 });
