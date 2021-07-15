@@ -601,13 +601,13 @@ class MinnesotaWhist extends Table
         $player_name = '';
         $next_player = '';
 
+        $players = self::loadPlayersBasicInfos();
         if ($play_mode == self::PLAYING_LOW) {
             $message = clienttranslate('All players bid low.');
             $next_player = $this->getPlayerAfter($dealer_id);
         }
         else {
             $message = clienttranslate('${player_name} bid high.');
-            $players = self::loadPlayersBasicInfos();
             $player_name = $players[$grand_player_id]['player_name'];
             $next_player = $this->getPlayerBefore($grand_player_id);
         }
@@ -616,6 +616,20 @@ class MinnesotaWhist extends Table
 
         self::setGameStateValue('currentHandType', $play_mode);
         self::setGameStateValue('grandPlayer', $grand_player_id);
+
+        foreach($bid_cards as $bidCard) {
+            $bid_player_id = $bidCard['location_arg'];
+            $bid_player_name = $players[$bid_player_id]['player_name'];
+            $card_value = $this->values_label[$bidCard['type_arg']];
+            $card_suit = $this->suits[$bidCard['type']]['name'];
+            self::notifyAllPlayers('revealPlayerBid', '${player_name} bid ${card_value} of ${card_suit}',
+                array(
+                    'player_name' => $bid_player_name,
+                    'card_value' => $card_value,
+                    'card_suit' => $card_suit
+                )
+            );
+        }
 
         self::notifyAllPlayers('bidsShown', $message, 
             array(
