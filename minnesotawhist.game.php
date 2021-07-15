@@ -83,7 +83,9 @@ class MinnesotaWhist extends Table
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
 
-        $players = $this->fillInZombiePlayers($players);
+        // Disabling this for now as it opens up too many unknowns.  Revist later to maybe use some other type of bot implementation
+        //$players = $this->fillInZombiePlayers($players);
+
         $initialPlayerOrder = $this->getInitialPlayerOrder($players);
         $playerOrder = $this->getPlayerOrder();
         $playerColors = array("ff0000", "008000");
