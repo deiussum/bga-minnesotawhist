@@ -102,6 +102,7 @@ function (dojo, declare) {
             this.playerHand.centerItems = true;
             this.playerHand.extraClasses = 'card';
             this.playerHand.setOverlap(60, 0);
+            this.playerHand.onItemCreate = dojo.hitch(this, 'setupNewCard');
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
@@ -155,9 +156,18 @@ function (dojo, declare) {
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
 
+            console.log('Current suit:' + this.gamedatas.current_suit);
+
+            if (this.haveCardOnTable()) {
+                this.disableAllCards();
+            }
+            else if (this.gamedatas.current_suit != 0 && this.haveAnyCardsInSuit(this.gamedatas.current_suit)) {
+                this.disableCardsNotInSuit(this.gamedatas.current_suit);
+            }
+
             console.log( "Ending game setup" );
         },
-       
+
 
         ///////////////////////////////////////////////////
         //// Game & client states
@@ -270,6 +280,26 @@ function (dojo, declare) {
         },
         getCardUniqueType: function(suit, value) {
             return (suit - 1) * 13 + (value - 2);
+        },
+
+        getSuitFromCardId: function(card_id) {
+            return Math.floor(card_id / 13) + 1;
+        },
+
+        getSuitName: function(suit) {
+            switch(Number(suit)) {
+                case 1: return 'spades';
+                case 2: return 'hearts';
+                case 3: return 'clubs';
+                case 4: return 'diamonds';
+            }
+        },
+       
+        setupNewCard: function(card_div, card_type_id, card_id) {
+            var suit = this.getSuitFromCardId(card_type_id);
+            var suit_name = this.getSuitName(suit);
+
+            card_div.classList.add(suit_name);
         },
 
         playCardOnTable: function(player_id, suit, value, card_id) {
@@ -391,6 +421,53 @@ function (dojo, declare) {
             }
         },
 
+        haveAnyCardsInSuit: function(suit) {
+            var suitName = this.getSuitName(suit);
+            var cardsInSuit = dojo.query('.stockitem.card.' + suitName);
+            console.log('Cards in ' + suitName + ':' + cardsInSuit.length);
+
+            return cardsInSuit.length > 0;
+        },
+
+        haveCardOnTable: function() {
+            return dojo.query('#cardontable_' + this.player_id).length > 0;
+        },
+
+        disableCardsInSuit: function(suit) {
+            var suitName = this.getSuitName(suit);
+            console.log('Disabling ' + suitName);
+            var cardsInSuit = dojo.query('.stockitem.card.' + suitName);
+            for(var i=0; i < cardsInSuit.length; i++ ){
+                var card = cardsInSuit[i];
+                card.classList.add('disabled');
+            }
+        },
+
+        disableCardsNotInSuit: function(suit) {
+            if (suit != 1) this.disableCardsInSuit(1);
+            if (suit != 2) this.disableCardsInSuit(2);
+            if (suit != 3) this.disableCardsInSuit(3);
+            if (suit != 4) this.disableCardsInSuit(4);
+        },
+
+        enableAllCards: function() {
+            var stockCards = dojo.query('.stockitem');
+
+            for(var i=0; i < stockCards.length; i++) {
+                var card = stockCards[i];
+                card.classList.remove('disabled');
+            }
+        },
+
+        disableAllCards: function() {
+            var stockCards = dojo.query('.stockitem');
+
+            for(var i=0; i < stockCards.length; i++) {
+                var card = stockCards[i];
+                card.classList.add('disabled');
+            }
+        },
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -497,6 +574,9 @@ function (dojo, declare) {
 
         notif_bidCard: function(notif) {
             this.playFlippedCard(notif.args.player_id, notif.args.card_id);
+            if (this.haveCardOnTable()) {
+                this.disableAllCards();
+            }
         },
 
         notif_removeCard: function(notif) {
@@ -513,6 +593,7 @@ function (dojo, declare) {
             }
             this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
             this.updateGrandIcon(notif.args.grand_player_id);
+            this.enableAllCards();
         },
 
         notif_clearBids: function(notif) {
@@ -535,6 +616,16 @@ function (dojo, declare) {
 
         notif_playCard: function(notif) {
             this.playCardOnTable(notif.args.player_id, notif.args.suit, notif.args.value, notif.args.card_id);
+
+            if (this.haveCardOnTable()) {
+                this.disableAllCards();
+            }
+            else if (this.haveAnyCardsInSuit(notif.args.current_suit)) {
+                this.disableCardsNotInSuit(notif.args.current_suit);
+            }
+            else {
+                this.enableAllCards();
+            }
         },
 
         notif_trickWin: function(notif) {
@@ -546,6 +637,7 @@ function (dojo, declare) {
                 this.team2tricks_counter.incValue(1);
                 this.addIconToTeamTricks(2);
             }
+            this.enableAllCards();
         },
 
         notif_giveAllCardsToPlayer: function(notif) {

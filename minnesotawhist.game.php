@@ -83,19 +83,23 @@ class MinnesotaWhist extends Table
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
 
+        // Disabling this for now as it opens up too many unknowns.  Revist later to maybe use some other type of bot implementation
+        //$players = $this->fillInZombiePlayers($players);
+
         $initialPlayerOrder = $this->getInitialPlayerOrder($players);
         $playerOrder = $this->getPlayerOrder();
         $playerColors = array("ff0000", "008000");
  
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
-        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_team, player_no) VALUES ";
+        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_zombie, player_ai, player_team, player_no) VALUES ";
         $values = array();
         foreach( $players as $player_id => $player )
         {
             $playerNumber = $playerOrder[$initialPlayerOrder[$player_id]];
             $color = $playerColors[$playerNumber % 2];
             $playerTeam = (($playerNumber - 1) % 2) + 1;
+            $playerZombie = array_key_exists('is_zombie', $player) ? $player['is_zombie'] : 0;
 
             $playerValues = array(
                 $player_id,
@@ -103,6 +107,8 @@ class MinnesotaWhist extends Table
                 '\'' . $player['player_canal'] . '\'',
                 '\'' . addslashes( $player['player_name'] ) . '\'',
                 '\'' . addslashes( $player['player_avatar'] ) . '\'',
+                $playerZombie,
+                $playerZombie,
                 $playerTeam,
                 $playerNumber
             );
@@ -173,6 +179,7 @@ class MinnesotaWhist extends Table
         $result['hand_type_text'] = $this->getHandTypeText();
         $result['dealer_player_id']  = $this->getGameStateValue("dealer");
         $result['grand_player_id']  = $this->getGameStateValue("grandPlayer");
+        $result['current_suit'] = $this->getGameStateValue("trickSuit");
 
         $scores = $this->getTeamScores();
         $result['team1score'] = $scores['team1score'];
@@ -243,6 +250,28 @@ class MinnesotaWhist extends Table
         self::setGameStateInitialValue('team2score', 0);
         self::setGameStateInitialValue('team1tricks', 0);
         self::setGameStateInitialValue('team2tricks', 0);
+    }
+
+    protected function fillInZombiePlayers($players) {
+        $zombie_id_start = 0; // TODO: Find an appropriate player_id for a zombie?
+
+        $player_count = count($players);
+        for ($player_no = $player_count; $player_no < 4; $player_no++) {
+            $zombie_no = $player_no - $player_count + 1;
+            $zombie = array(
+                "player_id" => $zombie_id_start + $player_no,
+                "player_name" => "Zombie #$zombie_no",
+                "player_no" => $player_no + 1,
+                "is_zombie" => 1,
+                "player_table_order" => $player_no + 1,
+                "player_canal" => '',
+                "player_avatar" => ''
+            );
+
+            $players[] = $zombie;
+        }
+
+        return $players;
     }
 
     protected function getInitialPlayerOrder($players) {
@@ -393,6 +422,7 @@ class MinnesotaWhist extends Table
         $currentTrickSuit = self::getGameStateValue('trickSuit');
         if ($currentTrickSuit == 0) {
             self::setGameStateValue('trickSuit', $currentCard['type']);
+            $currentTrickSuit = $currentCard['type'];
         }
         else if ($currentTrickSuit != $currentCard['type']) {
             // Does the user have any cards in their hand of the current suit?
@@ -423,7 +453,8 @@ class MinnesotaWhist extends Table
                 'value' => $currentCard['type_arg'], 
                 'value_displayed' => $this->values_label[$currentCard ['type_arg']],
                 'suit' => $currentCard['type'],
-                'suit_displayed' => $this->suits[$currentCard['type']]['name']
+                'suit_displayed' => $this->suits[$currentCard['type']]['name'],
+                'current_suit' => $currentTrickSuit
             )
         );
 
@@ -573,13 +604,13 @@ class MinnesotaWhist extends Table
         $player_name = '';
         $next_player = '';
 
+        $players = self::loadPlayersBasicInfos();
         if ($play_mode == self::PLAYING_LOW) {
             $message = clienttranslate('All players bid low.');
             $next_player = $this->getPlayerAfter($dealer_id);
         }
         else {
             $message = clienttranslate('${player_name} bid high.');
-            $players = self::loadPlayersBasicInfos();
             $player_name = $players[$grand_player_id]['player_name'];
             $next_player = $this->getPlayerBefore($grand_player_id);
         }
@@ -588,6 +619,20 @@ class MinnesotaWhist extends Table
 
         self::setGameStateValue('currentHandType', $play_mode);
         self::setGameStateValue('grandPlayer', $grand_player_id);
+
+        foreach($bid_cards as $bidCard) {
+            $bid_player_id = $bidCard['location_arg'];
+            $bid_player_name = $players[$bid_player_id]['player_name'];
+            $card_value = $this->values_label[$bidCard['type_arg']];
+            $card_suit = $this->suits[$bidCard['type']]['name'];
+            self::notifyAllPlayers('revealPlayerBid', '${player_name} bid ${card_value} of ${card_suit}',
+                array(
+                    'player_name' => $bid_player_name,
+                    'card_value' => $card_value,
+                    'card_suit' => $card_suit
+                )
+            );
+        }
 
         self::notifyAllPlayers('bidsShown', $message, 
             array(
@@ -890,6 +935,8 @@ class MinnesotaWhist extends Table
         $cardsOnTable = $this->cards->getCardsInLocation("cardsontable");
         $initialCard = count($cardsOnTable) == 0;
         $currentSuit = $this->getGameStateValue("trickSuit");
+        $highTableCardId = $initialCard ? 0 : $this->getHighestCardOnTable();
+        $highTableCard = $initialCard ? null : $this->cards->getCard($highTableCardId);
 
         if ($initialCard && $currentMode == self::PLAYING_HIGH) {
             return $this->getHighestCard($active_player);
@@ -898,16 +945,49 @@ class MinnesotaWhist extends Table
             return $this->getLowestCard($active_player);
         }
         else if ($currentMode == self::PLAYING_HIGH) {
-            $suit_card = $this->getHighestCardInSuit($active_player, $currentSuit);
-            return $suit_card != 0 ? $suit_card : $this->getHighestCard($active_player);
+            $suit_card_id = $this->getHighestCardInSuit($active_player, $currentSuit);
+
+            // If zombie doesn't have a card in the current suit, play lowest card
+            if ($suit_card_id == 0) return $this->getLowestCard($active_player);
+
+            // If zombie can beat current high card, play highest card in suit
+            $suit_card = $this->cards->getCard($suit_card_id);
+            if ($suit_card['type_arg'] > $highTableCard['type_arg']) return $suit_card_id;
+
+            // Zombie can't beat current high card, so play lowest in suit
+            return $this->getLowestCardInSuit($active_player, $currentSuit);
         }
         else if ($currentMode == self::PLAYING_LOW) {
-            $suit_card = $this->getLowestCardInSuit($active_player, $currentSuit);
-            return $suit_card != 0 ? $suit_card : $this->getLowestCard($active_player);
+            $suit_card_id = $this->getHighestCardInSuitBelowPlayedCard($active_player, $currentSuit, $highTableCard);
+            
+            // If zombie has a card below the current high card, play highest non-winning card in hand.
+            if ($suit_card_id != 0) return $suit_card_id;
+
+            $suit_card_id = $this->getLowestCardInSuit($active_player, $currentSuit);
+
+            // Play lowest card in suit, or get rid of highest card if we don't have any in current suit.
+            return $suit_card_id != 0 ? $suit_card_id : $this->getHighestCard($active_player);
         }
 
         // This should never happen
         throw new feException( "Zombie could not select a card.");
+    }
+
+    function getHighestCardOnTable() {
+        $suit = $this->getGameStateValue("trickSuit");
+        $high_card_id = 0;
+        $table_cards = $this->cards->getCardsInLocation('cardsontable');
+        $highestValue = 0;
+
+        foreach($table_cards as $card_id => $card) {
+            if ($card['type'] != $suit) continue;
+            if ($high_card_id == 0 || $card['type_arg'] > $highestValue) {
+                $high_card_id = $card_id;
+                $highestValue = $card['type_arg'];
+            }
+        }
+
+        return $high_card_id;
     }
 
     function getLowestCardInSuit($active_player, $suit) {
@@ -924,6 +1004,24 @@ class MinnesotaWhist extends Table
         }
 
         return $low_card_id;
+    }
+
+    function getHighestCardInSuitBelowPlayedCard($active_player, $suit, $played_card) {
+        $high_card_id = 0;
+        $zombie_cards = $this->cards->getCardsInLocation('hand', $active_player);
+        $highestValue = 0;
+        $maxValue = $played_card['type_arg'];
+
+        foreach($zombie_cards as $card_id => $card) {
+            if ($card['type'] != $suit) continue;
+            if ($card['type_arg'] > $maxValue) continue;
+            if ($high_card_id == 0 || $card['type_arg'] > $highestValue) {
+                $high_card_id = $card_id;
+                $lowestValue = $card['type_arg'];
+            }
+        }
+
+        return $high_card_id;
     }
 
     function getHighestCardInSuit($active_player, $suit) {
