@@ -179,6 +179,7 @@ class MinnesotaWhist extends Table
         $result['hand_type_text'] = $this->getHandTypeText();
         $result['dealer_player_id']  = $this->getGameStateValue("dealer");
         $result['grand_player_id']  = $this->getGameStateValue("grandPlayer");
+        $result['current_suit'] = $this->getGameStateValue("trickSuit");
 
         $scores = $this->getTeamScores();
         $result['team1score'] = $scores['team1score'];
@@ -421,6 +422,7 @@ class MinnesotaWhist extends Table
         $currentTrickSuit = self::getGameStateValue('trickSuit');
         if ($currentTrickSuit == 0) {
             self::setGameStateValue('trickSuit', $currentCard['type']);
+            $currentTrickSuit = $currentCard['type'];
         }
         else if ($currentTrickSuit != $currentCard['type']) {
             // Does the user have any cards in their hand of the current suit?
@@ -451,7 +453,8 @@ class MinnesotaWhist extends Table
                 'value' => $currentCard['type_arg'], 
                 'value_displayed' => $this->values_label[$currentCard ['type_arg']],
                 'suit' => $currentCard['type'],
-                'suit_displayed' => $this->suits[$currentCard['type']]['name']
+                'suit_displayed' => $this->suits[$currentCard['type']]['name'],
+                'current_suit' => $currentTrickSuit
             )
         );
 

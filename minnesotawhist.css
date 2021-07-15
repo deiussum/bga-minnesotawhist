@@ -245,6 +245,10 @@
     background-position-y: 0;
 }
 
+.card.disabled {
+    filter: grayscale(100%) contrast(50%);
+}
+
 @media screen and (min-width: 1500px) and (max-width: 1999px) {
     #playertables {
         width: 1200px;
