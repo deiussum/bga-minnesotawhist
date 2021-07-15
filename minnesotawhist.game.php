@@ -83,19 +83,21 @@ class MinnesotaWhist extends Table
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
 
+        $players = $this->fillInZombiePlayers($players);
         $initialPlayerOrder = $this->getInitialPlayerOrder($players);
         $playerOrder = $this->getPlayerOrder();
         $playerColors = array("ff0000", "008000");
  
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
-        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_team, player_no) VALUES ";
+        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_zombie, player_ai, player_team, player_no) VALUES ";
         $values = array();
         foreach( $players as $player_id => $player )
         {
             $playerNumber = $playerOrder[$initialPlayerOrder[$player_id]];
             $color = $playerColors[$playerNumber % 2];
             $playerTeam = (($playerNumber - 1) % 2) + 1;
+            $playerZombie = array_key_exists('is_zombie', $player) ? $player['is_zombie'] : 0;
 
             $playerValues = array(
                 $player_id,
@@ -103,6 +105,8 @@ class MinnesotaWhist extends Table
                 '\'' . $player['player_canal'] . '\'',
                 '\'' . addslashes( $player['player_name'] ) . '\'',
                 '\'' . addslashes( $player['player_avatar'] ) . '\'',
+                $playerZombie,
+                $playerZombie,
                 $playerTeam,
                 $playerNumber
             );
@@ -243,6 +247,28 @@ class MinnesotaWhist extends Table
         self::setGameStateInitialValue('team2score', 0);
         self::setGameStateInitialValue('team1tricks', 0);
         self::setGameStateInitialValue('team2tricks', 0);
+    }
+
+    protected function fillInZombiePlayers($players) {
+        $zombie_id_start = 0; // TODO: Find an appropriate player_id for a zombie?
+
+        $player_count = count($players);
+        for ($player_no = $player_count; $player_no < 4; $player_no++) {
+            $zombie_no = $player_no - $player_count + 1;
+            $zombie = array(
+                "player_id" => $zombie_id_start + $player_no,
+                "player_name" => "Zombie #$zombie_no",
+                "player_no" => $player_no + 1,
+                "is_zombie" => 1,
+                "player_table_order" => $player_no + 1,
+                "player_canal" => '',
+                "player_avatar" => ''
+            );
+
+            $players[] = $zombie;
+        }
+
+        return $players;
     }
 
     protected function getInitialPlayerOrder($players) {
