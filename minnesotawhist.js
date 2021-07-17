@@ -156,8 +156,6 @@ function (dojo, declare) {
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
 
-            console.log('Current suit:' + this.gamedatas.current_suit);
-
             if (this.haveCardOnTable()) {
                 this.disableAllCards();
             }
@@ -424,23 +422,23 @@ function (dojo, declare) {
         haveAnyCardsInSuit: function(suit) {
             var suitName = this.getSuitName(suit);
             var cardsInSuit = dojo.query('.stockitem.card.' + suitName);
-            console.log('Cards in ' + suitName + ':' + cardsInSuit.length);
 
             return cardsInSuit.length > 0;
         },
 
         haveCardOnTable: function() {
-            return dojo.query('#cardontable_' + this.player_id).length > 0;
+            var id = 'cardontable_' + this.player_id;
+            var playerCard = dojo.query('#' + id);
+            return playerCard.length > 0 && !dojo.hasClass(id, 'sliding');
         },
 
         disableCardsInSuit: function(suit) {
             var suitName = this.getSuitName(suit);
-            console.log('Disabling ' + suitName);
-            var cardsInSuit = dojo.query('.stockitem.card.' + suitName);
-            for(var i=0; i < cardsInSuit.length; i++ ){
-                var card = cardsInSuit[i];
-                card.classList.add('disabled');
-            }
+            dojo.query('.stockitem.' + suitName).addClass('disabled');
+        },
+        enableCardsInSuit: function(suit) {
+            var suitName = this.getSuitName(suit);
+            dojo.query('.stockitem.' + suitName).removeClass('disabled');
         },
 
         disableCardsNotInSuit: function(suit) {
@@ -448,24 +446,15 @@ function (dojo, declare) {
             if (suit != 2) this.disableCardsInSuit(2);
             if (suit != 3) this.disableCardsInSuit(3);
             if (suit != 4) this.disableCardsInSuit(4);
+            this.enableCardsInSuit(suit);
         },
 
         enableAllCards: function() {
-            var stockCards = dojo.query('.stockitem');
-
-            for(var i=0; i < stockCards.length; i++) {
-                var card = stockCards[i];
-                card.classList.remove('disabled');
-            }
+            dojo.query('.stockitem').removeClass('disabled');
         },
 
         disableAllCards: function() {
-            var stockCards = dojo.query('.stockitem');
-
-            for(var i=0; i < stockCards.length; i++) {
-                var card = stockCards[i];
-                card.classList.add('disabled');
-            }
+            dojo.query('.stockitem').addClass('disabled');
         },
 
         ///////////////////////////////////////////////////
@@ -644,6 +633,7 @@ function (dojo, declare) {
             var winner_id = notif.args.player_id;
 
             for(var player_id in this.gamedatas.players) {
+                dojo.query('.cardontable').addClass('sliding');
                 var anim = this.slideToObject('cardontable_' + player_id, 'cardontable_' + winner_id);
                 dojo.connect(anim, 'onEnd', function(node) {
                     dojo.destroy(node);
