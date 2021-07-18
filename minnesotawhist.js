@@ -37,6 +37,7 @@ function (dojo, declare) {
             this.team2score_counter = new ebg.counter();
             this.team1tricks_counter = new ebg.counter();
             this.team2tricks_counter = new ebg.counter();
+            this.canClaimNoAceNoFace = false;
         },
         
         /*
@@ -163,6 +164,11 @@ function (dojo, declare) {
                 this.disableCardsNotInSuit(this.gamedatas.current_suit);
             }
 
+            console.log('no ace, no face: ' + this.gamedatas.noace_noface);
+            this.canClaimNoAceNoFace = this.gamedatas.noace_noface;
+            if (this.gamedatas.noace_noface == true) {
+            }
+
             console.log( "Ending game setup" );
         },
 
@@ -245,6 +251,12 @@ function (dojo, declare) {
                     this.addActionButton( 'button_3_id', _('Button 3 label'), 'onMyMethodToCall3' ); 
                     break;
 */
+                    case 'playBid':
+                        if (this.canClaimNoAceNoFace) {
+                            console.log('action button?');
+                            this.addActionButton('claimNoAceNoFace_button', _('Claim No Ace, No Face, no Play.'), 'onClaimNoAceNoFace');
+                        }
+                        break;
                 }
             }
         },        
@@ -512,6 +524,18 @@ function (dojo, declare) {
             gameui.playerHand.item_height = gameui.cardheight;
             gameui.playerHand.updateDisplay();
         },
+        onClaimNoAceNoFace: function() {
+            if (!this.checkAction('claimNoAceNoFace')) return;
+
+            console.log('Claiming no ace, no face, no play');
+
+            this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/claimNoAceNoFace.html", {
+                lock: true
+            },this
+            , function(result) { }
+            , function(is_error) { }
+            );
+        },
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -545,6 +569,7 @@ function (dojo, declare) {
             dojo.subscribe('removeCard', this, 'notif_removeCard');
             dojo.subscribe('clearBids', this, "notif_clearBids");
             dojo.subscribe('returnCard', this, "notif_returnCard");
+            dojo.subscribe('noAceNoFaceClaimed', this, 'notif_noAceNoFaceClaimed');
         },  
         
         // from this point and below, you can write your game notifications handling methods
@@ -559,6 +584,8 @@ function (dojo, declare) {
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
             }
             this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
+
+            this.canClaimNoAceNoFace = notif.args.noace_noface;
         },
 
         notif_bidCard: function(notif) {
@@ -588,6 +615,18 @@ function (dojo, declare) {
         notif_clearBids: function(notif) {
             for(var player_id in this.gamedatas.players) {
                 var anim = this.slideToObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+                dojo.connect(anim, 'onEnd', function(node) {
+                    dojo.destroy(node);
+                });
+                anim.play();
+            }
+        },
+        notif_noAceNoFaceClaimed: function(notif) {
+            var cardsOnTable = dojo.query('.cardontable');
+            for(var i=0; i < cardsOnTable.length; i++) {
+                var cardId = cardsOnTable[i].id;
+                var playerId = cardId.replace('cardontable_', '');
+                var anim = this.slideToObject(cardId, 'overall_player_board_' + playerId);
                 dojo.connect(anim, 'onEnd', function(node) {
                     dojo.destroy(node);
                 });

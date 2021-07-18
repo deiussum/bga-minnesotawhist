@@ -56,11 +56,13 @@ class MinnesotaWhist extends Table
             "grandPlayer" => 15,
             "team1tricks" => 16,
             "team2tricks" => 17,
-            "teamOptions" => 100
+            "teamOptions" => 100,
+            "noAceNoFaceOption" => 101
         ) );        
 
         $this->cards = self::getNew("module.common.deck");
         $this->cards->init("card");
+        $this->useNoAceNoFace = true;
 	}
 	
     protected function getGameName( )
@@ -125,6 +127,7 @@ class MinnesotaWhist extends Table
         self::initializeGameState();
         self::initializeCards();
         self::initializeDealer($players);
+		$this->useNoAceNoFace = self::getGameStateValue('noAceNoFaceOption'); 
 
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -132,6 +135,10 @@ class MinnesotaWhist extends Table
         self::initStat('player', 'tricks_taken', 0);
         self::initStat('player', 'high_bids', 0);
         self::initStat('player', 'low_bids', 0);
+        self::initStat('player', 'noace_noface', 0);
+        self::initStat('player', 'was_skunked', 0);
+        self::initStat('player', 'skunked_other_team', 0);
+        self::initStat('player', 'perfect_hand', 0);
 
         // setup the initial game situation here
        
@@ -179,6 +186,9 @@ class MinnesotaWhist extends Table
         $result['hand_type_text'] = $this->getHandTypeText();
         $result['dealer_player_id']  = $this->getGameStateValue("dealer");
         $result['grand_player_id']  = $this->getGameStateValue("grandPlayer");
+
+        // Fix potential issue where bidding didn't reset trickSuit in running game.
+        if ($result['hand_type'] == self::BIDDING) self::setGameStateValue('trickSuit', 0);
         $result['current_suit'] = $this->getGameStateValue("trickSuit");
 
         $scores = $this->getTeamScores();
@@ -208,6 +218,7 @@ class MinnesotaWhist extends Table
             $result['team2label'] = clienttranslate('Team 2');
         }
 
+        $result['noace_noface'] = $this->canClaimNoAceNoFace($current_player_id);
   
         return $result;
     }
@@ -252,14 +263,16 @@ class MinnesotaWhist extends Table
         self::setGameStateInitialValue('team2tricks', 0);
     }
 
+    // NOTE: Abandoning this as it causes a warning due to it adding more players than BGA knows about.
+    //       Keeping the function here for now in case I want to play with a better method later.
     protected function fillInZombiePlayers($players) {
-        $zombie_id_start = 0; // TODO: Find an appropriate player_id for a zombie?
+        $zombie_id_start = 1; // TODO: Find an appropriate player_id for a zombie?
 
         $player_count = count($players);
         for ($player_no = $player_count; $player_no < 4; $player_no++) {
             $zombie_no = $player_no - $player_count + 1;
+            $player_id = $zombie_id_start + $player_no;
             $zombie = array(
-                "player_id" => $zombie_id_start + $player_no,
                 "player_name" => "Zombie #$zombie_no",
                 "player_no" => $player_no + 1,
                 "is_zombie" => 1,
@@ -268,7 +281,7 @@ class MinnesotaWhist extends Table
                 "player_avatar" => ''
             );
 
-            $players[] = $zombie;
+            $players[$player_id] = $zombie;
         }
 
         return $players;
@@ -399,6 +412,19 @@ class MinnesotaWhist extends Table
         return $messages[$hand_type];
     }
 
+    public function canClaimNoAceNoFace($player_id) {
+        if (!isset($this->useNoAceNoFaceOption) || $this->useNoAceNoFaceOption != true) return false;
+
+        $player_cards = $this->cards->getCardsInLocation("hand", $player_id);
+        if (count($player_cards) != 13) return false;
+
+        foreach($player_cards as $card) {
+            if ($card['type_arg'] > 10) return false;
+        }
+
+        return true;
+    }
+
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
@@ -499,6 +525,23 @@ class MinnesotaWhist extends Table
         $this->gamestate->setPlayerNonMultiactive($player_id, "showBids");
     }
 
+    function claimNoAceNoFace() {
+        self::checkAction("claimNoAceNoFace");
+        $player_id = self::getCurrentPlayerId();
+
+        if (!$this->canClaimNoAceNoFace($player_id)) {
+            throw new feException("You cannot claim No Ace, No Face rule.");
+        }
+
+        self::IncStat(1, "noace_noface", $player_id);
+        self::notifyAllPlayers("noAceNoFaceClaimed", clienttranslate('${player_name} invoked No Ace, No Face, No Play rule.'), 
+            array(
+                'player_id' => $player_id,
+                'player_name' => self::getCurrentPlayerName(),
+            ));
+
+        $this->gamestate->nextState('reshuffle');
+    }
     
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state arguments
@@ -558,6 +601,7 @@ class MinnesotaWhist extends Table
         self::setGameStateValue('team1tricks', 0);
         self::setGameStateValue('team2tricks', 0);
         self::setGameStateValue('currentHandType', self::BIDDING);
+        self::setGameStateValue('trickSuit', 0);
 
         $players = self::loadPlayersBasicInfos();
         foreach($players as $player_id => $player) {
@@ -565,7 +609,8 @@ class MinnesotaWhist extends Table
             self::notifyPlayer($player_id, 'newHand', '', array(
                 'cards' => $cards,
                 'hand_type' => self::BIDDING,
-                'hand_type_text' => $this->getHandTypeText()
+                'hand_type_text' => $this->getHandTypeText(),
+                'noace_noface' => $this->canClaimNoAceNoFace($player_id)
             ));
         }
         $this->gamestate->nextState("");
@@ -741,16 +786,20 @@ class MinnesotaWhist extends Table
         $scoring_team = 0;
         $points = max($team1_tricks, $team2_tricks)- 6;
 
+        $maxPoints = 7;
         if ($play_mode == 1) {
             $scoring_team = $team1_tricks > $team2_tricks ? 2 : 1;
+            $losing_team = $scoring_team == 1 ? 2 : 1;
         }
         else if ($play_mode == 2) {
             $scoring_team = $team1_tricks > $team2_tricks ? 1 : 2;
+            $losing_team = $scoring_team == 1 ? 2 : 1;
             $grand_team = $players[$grand_player_id]['player_team'];
 
             // Double points if the team that granded did not take the points
             if ($grand_team != $scoring_team) {
                 $points *= 2;
+                $maxPoints *= 2;
                 self::IncStat(1, "failed_grand", $grand_player_id);
             }
             else {
@@ -769,6 +818,10 @@ class MinnesotaWhist extends Table
             if ($player['player_team'] == $scoring_team) {
                 $sql = "UPDATE player SET player_score = player_score + $points WHERE player_id='$player_id'";
                 self::DbQuery($sql);
+
+                if ($points == $maxPoints ) {
+                    self::IncStat(1, "perfect_hand", $player_id);
+                }
             }
         }
 
@@ -789,6 +842,15 @@ class MinnesotaWhist extends Table
 
         // Check if this is the end of the game
         if ($scoring_team_score >= 13) {
+            $losing_team_score = $this->getGameStateValue("team${losing_team}score");
+
+            if ($losing_team_score == 0) {
+                foreach($players as $player_id => $player) {
+                    $skunkStat = $player['player_team'] == $scoring_team ? 'skunked_other_team' : 'was_skunked';
+                    self::IncStat(1, $skunkStat);
+                }
+            }
+
             $this->gamestate->nextState("endGame");
             return;
         }

@@ -37,7 +37,15 @@ $game_options = array(
                             4 => array( 'name' => totranslate('1st/4th vs 2nd/3rd'))
                         ),
                 'default' => 1
-            )
+    ),
+    101 => array(
+                'name' => totranslate('Use No Ace, No Face, No Play rule.'),
+                'values' => array(
+                            1 => array('name' => totranslate('Yes')),
+                            2 => array('name' => totranslate('No'))
+                ),
+                'default' => 1
+    )
 
 );
 

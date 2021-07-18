@@ -75,6 +75,12 @@
       self::ajaxResponse();
     }
 
+    public function claimNoAceNoFace() {
+      self::setAjaxMode();
+      $this->game->claimNoAceNoFace();
+      self::ajaxResponse();
+    }
+
   }
   
 
