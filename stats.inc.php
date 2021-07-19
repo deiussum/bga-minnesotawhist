@@ -74,7 +74,19 @@ $stats_type = array(
                     "type" => "int" ),
         "succeed_grand" => array("id" => 19,
                     "name" => totranslate("Succeeded to take majority of tricks after granding."),
-                    "type" => "int" )
+                    "type" => "int" ),
+        "noace_noface" => array("id" => 20,
+                    "name" => totranslate("Claimed No Ace, No Face, No Play."),
+                    "type" => "int"),
+        "was_skunked" => array("id" => 21,
+                    "name" => totranslate("Was skunked by the other team."),
+                    "type" => "int"),
+        "skunked_other_team" => array("id" => 22,
+                    "name" => totranslate("Skunked other team."),
+                    "type" => "int"),
+        "perfect_hand" => array("id" => 23,
+                    "name" => totranslate("Team had perfect hand."),
+                    "type" => "int")
 /*
         Examples:    
         
