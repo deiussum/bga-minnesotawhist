@@ -670,7 +670,7 @@ class MinnesotaWhist extends Table
             $bid_player_name = $players[$bid_player_id]['player_name'];
             $card_value = $this->values_label[$bidCard['type_arg']];
             $card_suit = $this->suits[$bidCard['type']]['name'];
-            self::notifyAllPlayers('revealPlayerBid', '${player_name} bid ${card_value} of ${card_suit}',
+            self::notifyAllPlayers('revealPlayerBid', '${player_name} bid ${card_value} ${card_suit}',
                 array(
                     'player_name' => $bid_player_name,
                     'card_value' => $card_value,
