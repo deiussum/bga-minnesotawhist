@@ -34,19 +34,19 @@ $this->card_types = array(
 
 $this->suits = array(
   1 => array(
-    'name' => clienttranslate('spade'),
+    'name' => clienttranslate('<strong style="color:black;">♠</strong>'),
     'nametr' => self::_('spade')
   ),
   2 => array(
-    'name' => clienttranslate('heart'),
+    'name' => clienttranslate('<strong style="color:red;">♥</strong>'),
     'nametr' => self::_('heart')
   ),
   3 => array(
-    'name' => clienttranslate('club'),
+    'name' => clienttranslate('<strong style="color:black;">♣</strong>'),
     'nametr' => self::_('club')
   ),
   4 => array(
-    'name' => clienttranslate('diamond'),
+    'name' => clienttranslate('<strong style="color:red;">♦</strong>'),
     'nametr' => self::_('diamond')
   ),
 );

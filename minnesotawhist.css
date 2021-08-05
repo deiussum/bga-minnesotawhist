@@ -167,6 +167,10 @@
     background-position: -980px 0;
 }
 
+.stockitem.card:hover {
+    margin-top: -2%;
+}
+
 #myhand-wrap {
     width: 710px;
     margin-left: auto;
