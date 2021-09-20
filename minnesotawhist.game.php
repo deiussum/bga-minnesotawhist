@@ -847,7 +847,7 @@ class MinnesotaWhist extends Table
             if ($losing_team_score == 0) {
                 foreach($players as $player_id => $player) {
                     $skunkStat = $player['player_team'] == $scoring_team ? 'skunked_other_team' : 'was_skunked';
-                    self::IncStat(1, $skunkStat);
+                    self::IncStat(1, $skunkStat, $player_id);
                 }
             }
 
