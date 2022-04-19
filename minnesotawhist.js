@@ -109,7 +109,6 @@ function (dojo, declare) {
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
-
             for(var suit=1; suit <= 4; suit++) {
                 for(var value=2; value <= 14; value++) {
                     var cardTypeId = this.getCardUniqueType(suit, value);
@@ -500,42 +499,38 @@ function (dojo, declare) {
             var items = this.playerHand.getSelectedItems();
 
             if (items.length > 0) {
-                var action = 'playCard';
-                if (this.checkAction(action, true)) {
-                    var card_id = items[0].id;
-                    console.log('on playCard ' + card_id);
+                var card_id = items[0].id;
+                var actions = ['playBid', 'playCard'];
+                var action = '';
 
-                    this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/" + action + ".html", {
-                        id: card_id,
-                        lock: true
-                    },this
-                    , function(result) { }
-                    , function(is_error) { }
-                    );
+                for(var i=0;i<actions.length;i++)
+                {
+                    if (this.checkAction(actions[i], true)) action = actions[i];
                 }
-                else if (this.checkAction('playBid')) {
-                    var card_id = items[0].id;
-                    console.log('on playBid ' + card_id);
 
-                    this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/playBid.html", {
-                        id: card_id,
-                        lock: true
-                    },this
-                    , function(result) { }
-                    , function(is_error) { }
-                    );
-                }
+                // Don't check the selectCard action as it can be done outside of the normal turn
+                // to change bid/pre-select card.
+                if (action === '') action = 'selectCard';
+
+                console.log('on ' +action + ' ' + card_id);
+
+                this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/" + action + ".html", {
+                    id: card_id,
+                    lock: true
+                },this
+                , function(result) { }
+                , function(is_error) { }
+                );
             }
-            else if (this.checkAction('removeBid')) {
-                console.log('on removeBid ');
-
+            else {
                 var that = this;
+                // Delay this a bit as it gets called even when immediately selecting a different card
+                // which causes a race condition.  Only send if there is truly nothing selected.
                 window.setTimeout(function() {
-                    // Delay this a bit as it gets called even when immediately selecting a different card
-                    // which causes a race condition.  Only send if there is truly nothing selected.
+                    console.log('on clearSelection ');
 
                     if (that.playerHand.getSelectedItems().length === 0) {
-                        that.ajaxcall("/" + that.game_name + "/" + that.game_name + "/removeBid.html", {
+                        that.ajaxcall("/" + that.game_name + "/" + that.game_name + "/clearSelection.html", {
                             lock: true
                         },that
                         , function(result) { }
@@ -655,6 +650,7 @@ function (dojo, declare) {
                 });
                 anim.play();
             }
+            this.playerHand.unselectAll();
         },
         notif_noAceNoFaceClaimed: function(notif) {
             var cardsOnTable = dojo.query('.cardontable');
@@ -701,6 +697,7 @@ function (dojo, declare) {
                 this.addIconToTeamTricks(2);
             }
             this.enableAllCards();
+            this.playerHand.unselectAll();
         },
 
         notif_giveAllCardsToPlayer: function(notif) {

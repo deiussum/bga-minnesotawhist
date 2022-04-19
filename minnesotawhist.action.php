@@ -75,17 +75,25 @@
       self::ajaxResponse();
     }
 
-    public function removeBid() {
-      self::setAjaxMode();
-      $this->game->removeBid();
-      self::ajaxResponse();
-    }
-
     public function claimNoAceNoFace() {
       self::setAjaxMode();
       $this->game->claimNoAceNoFace();
       self::ajaxResponse();
     }
+
+    public function selectCard() {
+      self::setAjaxMode();
+      $card_id = self::getArg("id", AT_posint, true);
+      $this->game->selectCard($card_id);
+      self::ajaxResponse();
+    }
+
+    public function clearSelection() {
+      self::setAjaxMode();
+      $this->game->clearSelection();
+      self::ajaxResponse();
+    }
+
   }
   
 

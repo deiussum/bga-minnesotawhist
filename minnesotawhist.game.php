@@ -342,7 +342,7 @@ class MinnesotaWhist extends Table
         return $currentCard;
     }
 
-    public function selectCard($player_id, $card_id) {
+    public function selectCardForPlayer($player_id, $card_id) {
         $card = self::getCardFromHand($player_id, $card_id);
 
         self::clearSelectedCardForPlayer($player_id);
@@ -534,11 +534,6 @@ class MinnesotaWhist extends Table
         if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
             throw new feException("That card is not in your hand.");
         }
-        $prior_selected_card_id = self::getSelectedCard($player_id);
-
-        if ($prior_selected_card_id) {
-            self::fixPriorBidStats($player_id, $prior_selected_card_id);
-        }
 
         $bid_high = $card['type'] == self::SPADES || $card['type'] == self::CLUBS;
 
@@ -549,53 +544,17 @@ class MinnesotaWhist extends Table
             self::IncStat(1, "low_bids", $player_id);
         }
 
-        self::selectCard($player_id, $card_id);
+        self::selectCardForPlayer($player_id, $card_id);
 
-        if (!$prior_selected_card_id)
-        {
-            self::notifyAllPlayers("bidCard", clienttranslate('${player_name} has placed a bid.'), 
-                array( 
-                    'player_id' => $player_id,
-                    'player_name' => self::getCurrentPlayerName(),
-                )
-            );
-        }
-
-        // To allow players to change their bid, only move the state for the players when everyone has selected a bid
-        $bids = self::getAllSelectedCards();
-
-        if (count($bids) == 4) {
-            $players = self::loadPlayersBasicInfos();
-
-            foreach($players as $player_id => $player)
-            {
-                $this->gamestate->setPlayerNonMultiactive($player_id, "showBids");
-            }
-        }
-    }
-
-    function removeBid() {
-        self::checkAction("removeBid");
-
-        $player_id = self::getCurrentPlayerId();
-
-        $prior_selected_card_id = self::getSelectedCard($player_id);
-
-        if (!$prior_selected_card_id) {
-            throw new feException("You did not have a bid card selected.");
-        }
-
-        self::fixPriorBidStats($player_id, $prior_selected_card_id);
-
-        self::clearSelectedCardForPlayer($player_id);
-
-        self::notifyAllPlayers("removeBid", clienttranslate('${player_name} has removed their bid.'), 
+        self::notifyAllPlayers("bidCard", clienttranslate('${player_name} has placed a bid.'), 
             array( 
                 'player_id' => $player_id,
                 'player_name' => self::getCurrentPlayerName(),
             )
         );
+        $this->gamestate->setPlayerNonMultiactive($player_id, "showBids");
     }
+
 
     function fixPriorBidStats($player_id, $prior_selected_card_id) {
         $prior_selected_card = $this->cards->getCard($prior_selected_card_id);
@@ -611,6 +570,7 @@ class MinnesotaWhist extends Table
 
     function claimNoAceNoFace() {
         self::checkAction("claimNoAceNoFace");
+
         $player_id = self::getCurrentPlayerId();
 
         if (!$this->canClaimNoAceNoFace($player_id)) {
@@ -626,6 +586,68 @@ class MinnesotaWhist extends Table
 
         $this->gamestate->nextState('reshuffle');
     } 
+
+    function selectCard($card_id) {
+        $this->gamestate->checkPossibleAction("selectCard");
+
+        $player_id = self::getCurrentPlayerId();
+        $card = $this->cards->getCard($card_id);
+        if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+            throw new feException("That card is not in your hand.");
+        }
+
+        $play_mode = $this->getGameStateValue("currentHandType");
+
+        if ($play_mode == self::BIDDING) {
+            $prior_selected_card_id = self::getSelectedCard($player_id);
+
+            if ($prior_selected_card_id) {
+                self::fixPriorBidStats($player_id, $prior_selected_card_id);
+            }
+            $bid_high = $card['type'] == self::SPADES || $card['type'] == self::CLUBS;
+
+            if ($bid_high) {
+                self::IncStat(1, "high_bids", $player_id);
+            }
+            else {
+                self::IncStat(1, "low_bids", $player_id);
+            }
+            self::selectCardForPlayer($player_id, $card_id);
+
+            self::notifyPlayer($player_id, 'changeBid', clienttranslate('You changed your bid.'), array());
+        }
+        else {
+            self::selectCardForPlayer($player_id, $card_id);
+        }
+    }
+
+    function clearSelection() {
+        $this->gamestate->checkPossibleAction("clearSelection");
+
+        $player_id = self::getCurrentPlayerId();
+
+        $prior_selected_card_id = self::getSelectedCard($player_id);
+
+        if (!$prior_selected_card_id) {
+            throw new feException("You did not have a card selected.");
+        }
+
+        $play_mode = $this->getGameStateValue("currentHandType");
+
+        if ($play_mode == self::BIDDING) {
+            $this->gamestate->setPlayersMultiactive(array($player_id), "playBid", false);
+
+            self::notifyAllPlayers("removeBid", clienttranslate('${player_name} has removed their bid.'), 
+                array( 
+                    'player_id' => $player_id,
+                    'player_name' => self::getCurrentPlayerName(),
+                )
+            );
+        }
+        else {
+            self::clearSelectedCardForPlayer($player_id);
+        }
+    }
     
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state arguments
@@ -772,7 +794,7 @@ class MinnesotaWhist extends Table
             )
         );
         
-        $this->gamestate->nextState();
+        $this->gamestate->nextState("returnBids");
     }
 
     function stReturnBids() {
@@ -977,7 +999,7 @@ class MinnesotaWhist extends Table
         $bid_card_id = $this->zombieChooseBidCard($active_player);
         $card = $this->cards->getCard($bid_card_id);
 
-        self::selectCard($bid_card_id);
+        self::selectCardForPlayer($active_player, $bid_card_id);
 
         self::notifyAllPlayers("bidCard", clienttranslate('${player_name} has placed a bid.'), 
             array( 

@@ -76,7 +76,7 @@ $machinestates = array(
         "descriptionmyturn" => clienttranslate('${you} must choose a black card to bid high, or a red card to bid low.'),
         "type" => "multipleactiveplayer",
         "action" => "stPlayBid",
-        "possibleactions" => array("playBid", "claimNoAceNoFace", "removeBid"),
+        "possibleactions" => array("playBid", "claimNoAceNoFace", "selectCard", "clearSelection"),
         "transitions" => array("showBids" => 22, "reshuffle" => 20)
     ),
     22 => array(
@@ -84,7 +84,6 @@ $machinestates = array(
         "description" => "",
         "type" => "game",
         "action" => "stShowBids",
-        "possibleactions" => array("changeBid"),
         "transitions" => array("returnBids" => 23)
     ),
     23 => array(
@@ -108,7 +107,7 @@ $machinestates = array(
         "description" => clienttranslate('${actplayer} must play a card'),
         "descriptionmyturn" => clienttranslate('${you} must play a card'),
         "type" => "activeplayer",
-        "possibleactions" => array("playCard"),
+        "possibleactions" => array("playCard", "selectCard", "clearSelection"),
         "transitions" => array("playCard" => 32)
     ),
     32 => array(
