@@ -103,6 +103,8 @@ function (dojo, declare) {
             this.playerHand.centerItems = true;
             this.playerHand.extraClasses = 'card';
             this.playerHand.setOverlap(60, 0);
+            this.playerHand.setSelectionMode(1);
+            this.playerHand.setSelectionAppearance('class');
             this.playerHand.onItemCreate = dojo.hitch(this, 'setupNewCard');
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
@@ -120,6 +122,14 @@ function (dojo, declare) {
                 var suit = card.type;
                 var value = card.type_arg;
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
+            }
+
+            if (gamedatas.selected_card_id) {
+                console.log('selected card id: ' + gamedatas.selected_card_id);
+                this.playerHand.selectItem(gamedatas.selected_card_id);
+            }
+            else {
+                console.log('no selected card');
             }
 
             for(var i in this.gamedatas.cardsontable) {
@@ -357,6 +367,10 @@ function (dojo, declare) {
             this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
         },
 
+        removeCardFromTable: function(player_id) {
+            dojo.destroy('cardontable_' + player_id);
+        },
+
         updatePlayMode: function(handType, handTypeText) {
             console.log("Hand type:" + handTypeText);
             var node = dojo.byId('playmode');
@@ -498,12 +512,10 @@ function (dojo, declare) {
                     , function(result) { }
                     , function(is_error) { }
                     );
-
-                    this.playerHand.unselectAll();
                 }
                 else if (this.checkAction('playBid')) {
                     var card_id = items[0].id;
-                    console.log('on playCard ' + card_id);
+                    console.log('on playBid ' + card_id);
 
                     this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/playBid.html", {
                         id: card_id,
@@ -513,9 +525,24 @@ function (dojo, declare) {
                     , function(is_error) { }
                     );
                 }
-                else {
-                    this.playerHand.unselectAll();
-                }
+            }
+            else if (this.checkAction('removeBid')) {
+                console.log('on removeBid ');
+
+                var that = this;
+                window.setTimeout(function() {
+                    // Delay this a bit as it gets called even when immediately selecting a different card
+                    // which causes a race condition.  Only send if there is truly nothing selected.
+
+                    if (that.playerHand.getSelectedItems().length === 0) {
+                        that.ajaxcall("/" + that.game_name + "/" + that.game_name + "/removeBid.html", {
+                            lock: true
+                        },that
+                        , function(result) { }
+                        , function(is_error) { }
+                        );
+                    }
+                }, 250);
             }
         },
         onWindowResize: function() {
@@ -563,6 +590,7 @@ function (dojo, declare) {
             dojo.subscribe('newScores', this, "notif_newScores");
 
             dojo.subscribe('bidCard', this, "notif_bidCard");
+            dojo.subscribe('removeBid', this, "notif_removeBid");
             dojo.subscribe('bidsShown', this, "notif_bidsShown");
             this.notifqueue.setSynchronous('bidsShown', 1000);
 
@@ -593,6 +621,13 @@ function (dojo, declare) {
             if (this.haveCardOnTable()) {
                 this.disableAllCards();
             }
+        },
+
+        notif_removeBid: function(notif) {
+            if (notif.args.player_id == this.player_id) {
+                this.enableAllCards();
+            }
+            this.removeCardFromTable(notif.args.player_id);
         },
 
         notif_removeCard: function(notif) {

@@ -75,12 +75,17 @@
       self::ajaxResponse();
     }
 
+    public function removeBid() {
+      self::setAjaxMode();
+      $this->game->removeBid();
+      self::ajaxResponse();
+    }
+
     public function claimNoAceNoFace() {
       self::setAjaxMode();
       $this->game->claimNoAceNoFace();
       self::ajaxResponse();
     }
-
   }
   
 
