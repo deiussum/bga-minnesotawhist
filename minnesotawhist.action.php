@@ -93,7 +93,13 @@
       $this->game->clearSelection();
       self::ajaxResponse();
     }
-
+    
+    public function updateAutoPlay() {
+      self::setAjaxMode();
+      $auto_play = self::getArg("auto_play", AT_posint, true);
+      $this->game->updateAutoPlay($auto_play);
+      self::ajaxResponse();
+    }
   }
   
 

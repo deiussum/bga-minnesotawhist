@@ -175,10 +175,30 @@ function (dojo, declare) {
 
             console.log('no ace, no face: ' + this.gamedatas.noace_noface);
             this.canClaimNoAceNoFace = this.gamedatas.noace_noface;
-            if (this.gamedatas.noace_noface == true) {
-            }
 
+            this.initPreferencesObserver();
             console.log( "Ending game setup" );
+        },
+
+        initPreferencesObserver() {
+            dojo.query('.preference_control').on('change', (e) => {
+                const match = e.target.id.match(/^preference_[cf]ontrol_(\d+)$/);
+                if (!match) return;
+
+                const pref = match[1];
+                const newValue = e.target.value;
+                this.prefs[pref].value = newValue;
+                this.onPreferenceChange(pref, newValue);
+            });
+
+            this.onPreferenceChange(101, this.prefs[101].value);
+            console.log('AutoPlay preference:' + this.prefs[101].value);
+        },
+        onPreferenceChange(prefId, prefValue) {
+            prefId = parseInt(prefId);
+            if (prefId == 101) {
+                this.updateAutoPlay(prefValue);
+            }
         },
 
 
@@ -480,6 +500,17 @@ function (dojo, declare) {
 
         disableAllCards: function() {
             dojo.query('.stockitem').addClass('disabled');
+        },
+
+        updateAutoPlay: function(autoPlayValue) {
+            console.log('on updateAutoPlay ' + autoPlayValue);
+
+            this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/updateAutoPlay.html", {
+                auto_play: autoPlayValue
+            },this
+            , function(result) { }
+            , function(is_error) { }
+            );
         },
 
         ///////////////////////////////////////////////////

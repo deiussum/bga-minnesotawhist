@@ -36,6 +36,10 @@ class MinnesotaWhist extends Table
     const PLAYING_LOW = 1;
     const PLAYING_HIGH = 2;
 
+    const AUTO_PLAY = 101;
+    const AUTO_PLAY_OFF = 0;
+    const AUTO_PLAY_ON = 1;
+
 	function __construct( )
 	{   
 
@@ -85,8 +89,6 @@ class MinnesotaWhist extends Table
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
 
-        // Disabling this for now as it opens up too many unknowns.  Revist later to maybe use some other type of bot implementation
-        //$players = $this->fillInZombiePlayers($players);
 
         $initialPlayerOrder = $this->getInitialPlayerOrder($players);
         $playerOrder = $this->getPlayerOrder();
@@ -94,14 +96,15 @@ class MinnesotaWhist extends Table
  
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
-        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_zombie, player_ai, player_team, player_no) VALUES ";
+        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_team, player_no, player_autoplay_pref) VALUES ";
         $values = array();
         foreach( $players as $player_id => $player )
         {
             $playerNumber = $playerOrder[$initialPlayerOrder[$player_id]];
             $color = $playerColors[$playerNumber % 2];
             $playerTeam = (($playerNumber - 1) % 2) + 1;
-            $playerZombie = array_key_exists('is_zombie', $player) ? $player['is_zombie'] : 0;
+
+            $auto_play = self::AUTO_PLAY_ON;
 
             $playerValues = array(
                 $player_id,
@@ -109,10 +112,9 @@ class MinnesotaWhist extends Table
                 '\'' . $player['player_canal'] . '\'',
                 '\'' . addslashes( $player['player_name'] ) . '\'',
                 '\'' . addslashes( $player['player_avatar'] ) . '\'',
-                $playerZombie,
-                $playerZombie,
                 $playerTeam,
-                $playerNumber
+                $playerNumber,
+                $auto_play
             );
 
             $values[] = '(' . implode($playerValues, ',') . ')';
@@ -376,6 +378,16 @@ class MinnesotaWhist extends Table
     public function clearAllSelectedCards() {
         $sql = "UPDATE card set card_selected = false WHERE card_selected = true";
         self::DbQuery($sql);
+    }
+
+    public function getAutoPlay($player_id) {
+        $sql = "SELECT player_autoplay_pref FROM player WHERE player_id='$player_id'";
+        return self::getUniqueValueFromDB( $sql );
+    }
+
+    public function setAutoPlay($player_id, $auto_play) {
+        $sql = "UPDATE player SET player_autoplay_pref='$auto_play' WHERE player_id='$player_id'";
+        return self::DbQuery( $sql );
     }
 
     protected function initializeDealer($players) {
@@ -668,6 +680,19 @@ class MinnesotaWhist extends Table
             self::clearSelectedCardForPlayer($player_id);
         }
     }
+
+    public function updateAutoPlay($auto_play) {
+        $player_id = self::getCurrentPlayerId();
+        $current_auto_play = self::getAutoPlay($player_id);
+
+        $this->setAutoPlay($player_id, $auto_play);
+
+        $msg = $current_auto_play != $auto_play
+            ? clienttranslate("AutoPlay preference updated.")
+            : "";
+
+        self::notifyPlayer($player_id, "autoPlay", $msg, array());
+    }
     
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state arguments
@@ -897,10 +922,12 @@ class MinnesotaWhist extends Table
         $player_id = self::getActivePlayerId();
         $player_selected_card_id = self::getSelectedCard($player_id);
         $autoplay_card_id = null;
+        $player_autoplay_pref = self::getAutoPlay($player_id);
+
         if ($player_selected_card_id) {
             $autoplay_card_id = $player_selected_card_id;
         }
-        else {
+        else if ($player_autoplay_pref == self::AUTO_PLAY_ON) {
             $valid_cards = $this->getValidCards($player_id);
             if (count($valid_cards) == 1) {
                 $autoplay_card_id = $valid_cards[0];
