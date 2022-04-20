@@ -472,8 +472,21 @@ class MinnesotaWhist extends Table
         return true;
     }
 
+    public function getValidCards($player_id) {
+        $currentTrickSuit = self::getGameStateValue('trickSuit');
+        $player_cards = $this->cards->getCardsInLocation("hand", $player_id);
 
+        $valid_cards = array();
+        $all_cards = array();
+        foreach($player_cards as $card_id => $card) {
+            if ($currentTrickSuit == 0 || $card['type'] == $currentTrickSuit) {
+                $valid_cards[] = $card_id;
+            }
+            $all_cards[] = $card_id;
+        }
 
+        return count($valid_cards) > 0 ? $valid_cards : $all_cards;
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
@@ -883,9 +896,20 @@ class MinnesotaWhist extends Table
     function stPreSelectCheck() {
         $player_id = self::getActivePlayerId();
         $player_selected_card_id = self::getSelectedCard($player_id);
+        $autoplay_card_id = null;
         if ($player_selected_card_id) {
+            $autoplay_card_id = $player_selected_card_id;
+        }
+        else {
+            $valid_cards = $this->getValidCards($player_id);
+            if (count($valid_cards) == 1) {
+                $autoplay_card_id = $valid_cards[0];
+            }
+        }
+
+        if ($autoplay_card_id) {
             try {
-                $this->playCard($player_selected_card_id);
+                $this->playCard($autoplay_card_id);
             }
             catch(Exception $ex) {
                 $this->gamestate->nextState('playerTurn');
