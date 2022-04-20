@@ -1363,11 +1363,15 @@ class MinnesotaWhist extends Table
         // $from_version is equal to 1404301345
         
         // Example:
-       if( $from_version <= 2109200323 )
-       {
+       if( $from_version <= 2109200323 ) {
            // ! important ! Use DBPREFIX_<table_name> for all tables
 
            $sql = "ALTER TABLE DBPREFIX_card add `card_selected` bit not null default 0";
+           self::applyDbUpgradeToAllDB( $sql );
+       }
+
+       if ($from_version <= 2204202238) {
+           $sql = "ALTER TABLE DBPREFIX_player add `player_autoplay_pref` int unsigned not null default 1";
            self::applyDbUpgradeToAllDB( $sql );
        }
 //        if( $from_version <= 1405061421 )
