@@ -951,6 +951,13 @@ class MinnesotaWhist extends Table
     function stEndHand() {
         $team1_tricks = $this->getGameStateValue("team1tricks");
         $team2_tricks = $this->getGameStateValue("team2tricks");
+        $team1_grand = "no";
+        $team2_grand = "no";
+        $team1_double_points = "no";
+        $team2_double_points = "no";
+        $team1_score = 0;
+        $team2_score = 0;
+
         $play_mode = $this->getGameStateValue("currentHandType");
         $grand_player_id = $this->getGameStateValue("grandPlayer");
 
@@ -969,17 +976,26 @@ class MinnesotaWhist extends Table
             $scoring_team = $team1_tricks > $team2_tricks ? 1 : 2;
             $losing_team = $scoring_team == 1 ? 2 : 1;
             $grand_team = $players[$grand_player_id]['player_team'];
+                
+            if ($grand_team == 1) $team1_grand = "yes";
+            if ($grand_team == 2) $team2_grand = "yes";
 
             // Double points if the team that granded did not take the points
             if ($grand_team != $scoring_team) {
                 $points *= 2;
                 $maxPoints *= 2;
                 self::IncStat(1, "failed_grand", $grand_player_id);
+
+                if ($scoring_team == 1) $team1_double_points = "yes";
+                if ($scoring_team == 2) $team2_double_points = "yes";
             }
             else {
                 self::IncStat(1, "succeed_grand", $grand_player_id);
             }
         }
+
+        if ($scoring_team == 1) $team1_score = $points;
+        if ($scoring_team == 2) $team2_score = $points;
 
         // Update game state scores
         $scoring_team_score_label = "team${scoring_team}score";
@@ -1012,7 +1028,7 @@ class MinnesotaWhist extends Table
                 'newScores' => $newScores,
                 'scoring_team' => $scoring_team,
                 'points' => $points,
-                'dealer_id' => $next_dealer_id
+                'dealer_id' => $next_dealer_id,
             )
         );
 
@@ -1027,11 +1043,26 @@ class MinnesotaWhist extends Table
                 }
             }
 
+            $score_table_label = "Game score";
+
             $this->gamestate->nextState("endGame");
-            return;
         }
-        
-        $this->gamestate->nextState('nextHand');
+        else {
+            $this->gamestate->nextState('nextHand');
+
+            $score_table = array(
+                array("Team", "Tricks", "Grand", "Double", "Score"),
+                array("Team 1", $team1_tricks, $team1_grand, $team1_double_points, $team1_score),
+                array("Team 2", $team2_tricks, $team2_grand, $team2_double_points, $team2_score)
+            );
+
+            self::notifyAllPlayers("tableWindow", '', array(
+                "id" => 'handScoring',
+                "title" => clienttranslate("Scoring for this hand."),
+                "table" => $score_table,
+                "closing" => clienttranslate("Close")
+            ));
+        }
     }
 
 
