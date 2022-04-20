@@ -505,7 +505,7 @@ function (dojo, declare) {
 
                 for(var i=0;i<actions.length;i++)
                 {
-                    if (this.checkAction(actions[i], true)) action = actions[i];
+                    if (this.checkAction(actions[i], false)) action = actions[i];
                 }
 
                 // Don't check the selectCard action as it can be done outside of the normal turn
@@ -515,8 +515,7 @@ function (dojo, declare) {
                 console.log('on ' +action + ' ' + card_id);
 
                 this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/" + action + ".html", {
-                    id: card_id,
-                    lock: true
+                    id: card_id
                 },this
                 , function(result) { }
                 , function(is_error) { }
@@ -531,7 +530,6 @@ function (dojo, declare) {
 
                     if (that.playerHand.getSelectedItems().length === 0) {
                         that.ajaxcall("/" + that.game_name + "/" + that.game_name + "/clearSelection.html", {
-                            lock: true
                         },that
                         , function(result) { }
                         , function(is_error) { }
@@ -593,6 +591,7 @@ function (dojo, declare) {
             dojo.subscribe('clearBids', this, "notif_clearBids");
             dojo.subscribe('returnCard', this, "notif_returnCard");
             dojo.subscribe('noAceNoFaceClaimed', this, 'notif_noAceNoFaceClaimed');
+            dojo.subscribe('selectionError', this, 'notif_selectionError');
         },  
         
         // from this point and below, you can write your game notifications handling methods
@@ -607,6 +606,7 @@ function (dojo, declare) {
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
             }
             this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
+            this.playerHand.unselectAll();
 
             this.canClaimNoAceNoFace = notif.args.noace_noface;
         },
@@ -697,7 +697,6 @@ function (dojo, declare) {
                 this.addIconToTeamTricks(2);
             }
             this.enableAllCards();
-            this.playerHand.unselectAll();
         },
 
         notif_giveAllCardsToPlayer: function(notif) {
@@ -732,6 +731,10 @@ function (dojo, declare) {
             var dealer_id = notif.args.dealer_id;
             this.updateDealerIcon(dealer_id);
             this.updateGrandIcon(0);
+        },
+
+        notif_selectionError: function(notif) {
+            this.playerHand.unselectAll();
         }
    });             
 });

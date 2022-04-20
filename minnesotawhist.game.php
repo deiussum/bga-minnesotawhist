@@ -175,16 +175,21 @@ class MinnesotaWhist extends Table
         $result['cardsontable'] = $this->cards->getCardsInLocation('cardsontable');
         $result['selected_card_id'] = self::getSelectedCard($current_player_id);
 
-        $bids = array();
-        $bids_on_table = self::getAllSelectedCards();
-
-        foreach($bids_on_table as $bid_card) {
-            $player_id = $bid_card['location_arg'];
-            array_push($bids, $player_id);
-        }
-        $result['bids'] = $bids;
         $result['hand_type'] = $this->getGameStateValue("currentHandType");
         $result['hand_type_text'] = $this->getHandTypeText();
+
+        $bids = array();
+
+        if ($result['hand_type'] == self::BIDDING) {
+            $bids_on_table = self::getAllSelectedCards();
+
+            foreach($bids_on_table as $bid_card) {
+                $player_id = $bid_card['location_arg'];
+                array_push($bids, $player_id);
+            }
+        }
+
+        $result['bids'] = $bids;
         $result['dealer_player_id']  = $this->getGameStateValue("dealer");
         $result['grand_player_id']  = $this->getGameStateValue("grandPlayer");
 
@@ -468,6 +473,8 @@ class MinnesotaWhist extends Table
     }
 
 
+
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -478,7 +485,7 @@ class MinnesotaWhist extends Table
     */
 
     function playCard($card_id) {
-        self::checkAction("playCard");
+        // self::checkAction("playCard");
         $player_id = self::getActivePlayerId();
 
         $currentCard = self::getCardFromHand($player_id, $card_id);
@@ -502,7 +509,7 @@ class MinnesotaWhist extends Table
 
             if (!$valid_card) {
                 $suit_name = $this->suits[$currentTrickSuit]['name'];
-                throw new feException(self::_("You must play a $suit_name."), true);
+                throw new BgaUserException(self::_("You must play a $suit_name."), true);
             }
         }
 
@@ -522,7 +529,7 @@ class MinnesotaWhist extends Table
             )
         );
 
-        $this->gamestate->nextState('playCard');
+        $this->gamestate->nextState('nextPlayer');
     }
 
     function playBid($card_id) {
@@ -629,7 +636,7 @@ class MinnesotaWhist extends Table
         $prior_selected_card_id = self::getSelectedCard($player_id);
 
         if (!$prior_selected_card_id) {
-            throw new feException("You did not have a card selected.");
+            return;
         }
 
         $play_mode = $this->getGameStateValue("currentHandType");
@@ -820,7 +827,6 @@ class MinnesotaWhist extends Table
 
     function stNextPlayer() {
         if ($this->cards->countCardInLocation('cardsontable') == 4) {
-
             $cards_on_table = $this->cards->getCardsInLocation('cardsontable');
             $best_value=0;
             $best_value_player_id = null; 
@@ -869,7 +875,25 @@ class MinnesotaWhist extends Table
         else {
             $player_id = self::activeNextPlayer();
             self::giveExtraTime($player_id);
-            $this->gamestate->nextState('nextPlayer');
+            $this->gamestate->nextState('preSelectCheck');
+
+        }
+    }
+
+    function stPreSelectCheck() {
+        $player_id = self::getActivePlayerId();
+        $player_selected_card_id = self::getSelectedCard($player_id);
+        if ($player_selected_card_id) {
+            try {
+                $this->playCard($player_selected_card_id);
+            }
+            catch(Exception $ex) {
+                $this->gamestate->nextState('playerTurn');
+                self::notifyPlayer($player_id, 'selectionError', clienttranslate('Your selected card could not be played'), array());
+            }
+        }
+        else {
+            $this->gamestate->nextState('playerTurn');
         }
     }
 
