@@ -1032,6 +1032,20 @@ class MinnesotaWhist extends Table
             )
         );
 
+        // Setup end of hand scoring dialog
+        $score_table = array(
+            array("Team", "Tricks", "Grand", "Double", "Score"),
+            array("Team 1", $team1_tricks, $team1_grand, $team1_double_points, $team1_score),
+            array("Team 2", $team2_tricks, $team2_grand, $team2_double_points, $team2_score)
+        );
+
+        self::notifyAllPlayers("tableWindow", '', array(
+            "id" => 'handScoring',
+            "title" => clienttranslate("Scoring for this hand."),
+            "table" => $score_table,
+            "closing" => clienttranslate("Close")
+        ));
+
         // Check if this is the end of the game
         if ($scoring_team_score >= 13) {
             $losing_team_score = $this->getGameStateValue("team${losing_team}score");
@@ -1050,18 +1064,6 @@ class MinnesotaWhist extends Table
         else {
             $this->gamestate->nextState('nextHand');
 
-            $score_table = array(
-                array("Team", "Tricks", "Grand", "Double", "Score"),
-                array("Team 1", $team1_tricks, $team1_grand, $team1_double_points, $team1_score),
-                array("Team 2", $team2_tricks, $team2_grand, $team2_double_points, $team2_score)
-            );
-
-            self::notifyAllPlayers("tableWindow", '', array(
-                "id" => 'handScoring',
-                "title" => clienttranslate("Scoring for this hand."),
-                "table" => $score_table,
-                "closing" => clienttranslate("Close")
-            ));
         }
     }
 
