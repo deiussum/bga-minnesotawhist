@@ -167,7 +167,7 @@
     background-position: -980px 0;
 }
 
-.stockitem.card:hover {
+.stockitem.card:hover, .stockitem.card.stockitem_selected {
     margin-top: -2%;
 }
 

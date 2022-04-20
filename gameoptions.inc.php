@@ -61,7 +61,15 @@ $game_preferences = array(
 
         ),
         'default' => 4
-
+    ),
+    101 => array(
+        'name' => totranslate('Auto play'),
+        'needReload' => false,
+        'values' => array(
+            0 => array('name' => totranslate('Off')),
+            1 => array('name' => totranslate('Auto play when there is only 1 playable card'))
+        ),
+        'default' => 1
     )
 );
 

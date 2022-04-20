@@ -26,10 +26,12 @@ CREATE TABLE IF NOT EXISTS `card` (
   `card_type_arg` int(11) NOT NULL,
   `card_location` varchar(16) NOT NULL,
   `card_location_arg` int(11) NOT NULL,
+  `card_selected` bit not null default 0,
   PRIMARY KEY (`card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 
 -- Example 2: add a custom field to the standard "player" table
-ALTER TABLE `player` ADD `player_team` INT UNSIGNED NOT NULL DEFAULT '0';
+ALTER TABLE `player` ADD `player_team` INT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE `player` ADD `player_autoplay_pref` int unsigned NOT NULL DEFAULT 1;
 

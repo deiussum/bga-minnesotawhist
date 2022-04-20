@@ -36,6 +36,10 @@ class MinnesotaWhist extends Table
     const PLAYING_LOW = 1;
     const PLAYING_HIGH = 2;
 
+    const AUTO_PLAY = 101;
+    const AUTO_PLAY_OFF = 0;
+    const AUTO_PLAY_ON = 1;
+
 	function __construct( )
 	{   
 
@@ -85,8 +89,6 @@ class MinnesotaWhist extends Table
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
 
-        // Disabling this for now as it opens up too many unknowns.  Revist later to maybe use some other type of bot implementation
-        //$players = $this->fillInZombiePlayers($players);
 
         $initialPlayerOrder = $this->getInitialPlayerOrder($players);
         $playerOrder = $this->getPlayerOrder();
@@ -94,14 +96,15 @@ class MinnesotaWhist extends Table
  
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
-        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_zombie, player_ai, player_team, player_no) VALUES ";
+        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_team, player_no, player_autoplay_pref) VALUES ";
         $values = array();
         foreach( $players as $player_id => $player )
         {
             $playerNumber = $playerOrder[$initialPlayerOrder[$player_id]];
             $color = $playerColors[$playerNumber % 2];
             $playerTeam = (($playerNumber - 1) % 2) + 1;
-            $playerZombie = array_key_exists('is_zombie', $player) ? $player['is_zombie'] : 0;
+
+            $auto_play = self::AUTO_PLAY_ON;
 
             $playerValues = array(
                 $player_id,
@@ -109,10 +112,9 @@ class MinnesotaWhist extends Table
                 '\'' . $player['player_canal'] . '\'',
                 '\'' . addslashes( $player['player_name'] ) . '\'',
                 '\'' . addslashes( $player['player_avatar'] ) . '\'',
-                $playerZombie,
-                $playerZombie,
                 $playerTeam,
-                $playerNumber
+                $playerNumber,
+                $auto_play
             );
 
             $values[] = '(' . implode($playerValues, ',') . ')';
@@ -173,17 +175,23 @@ class MinnesotaWhist extends Table
   
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['cardsontable'] = $this->cards->getCardsInLocation('cardsontable');
+        $result['selected_card_id'] = self::getSelectedCard($current_player_id);
 
-        $bids = array();
-        $bids_on_table = $this->cards->getCardsInLocation('bidcards');
-
-        foreach($bids_on_table as $bid_card) {
-            $player_id = $bid_card['location_arg'];
-            array_push($bids, $player_id);
-        }
-        $result['bids'] = $bids;
         $result['hand_type'] = $this->getGameStateValue("currentHandType");
         $result['hand_type_text'] = $this->getHandTypeText();
+
+        $bids = array();
+
+        if ($result['hand_type'] == self::BIDDING) {
+            $bids_on_table = self::getAllSelectedCards();
+
+            foreach($bids_on_table as $bid_card) {
+                $player_id = $bid_card['location_arg'];
+                array_push($bids, $player_id);
+            }
+        }
+
+        $result['bids'] = $bids;
         $result['dealer_player_id']  = $this->getGameStateValue("dealer");
         $result['grand_player_id']  = $this->getGameStateValue("grandPlayer");
 
@@ -265,27 +273,27 @@ class MinnesotaWhist extends Table
 
     // NOTE: Abandoning this as it causes a warning due to it adding more players than BGA knows about.
     //       Keeping the function here for now in case I want to play with a better method later.
-    protected function fillInZombiePlayers($players) {
-        $zombie_id_start = 1; // TODO: Find an appropriate player_id for a zombie?
+    // protected function fillInZombiePlayers($players) {
+    //     $zombie_id_start = 1; // TODO: Find an appropriate player_id for a zombie?
 
-        $player_count = count($players);
-        for ($player_no = $player_count; $player_no < 4; $player_no++) {
-            $zombie_no = $player_no - $player_count + 1;
-            $player_id = $zombie_id_start + $player_no;
-            $zombie = array(
-                "player_name" => "Zombie #$zombie_no",
-                "player_no" => $player_no + 1,
-                "is_zombie" => 1,
-                "player_table_order" => $player_no + 1,
-                "player_canal" => '',
-                "player_avatar" => ''
-            );
+    //     $player_count = count($players);
+    //     for ($player_no = $player_count; $player_no < 4; $player_no++) {
+    //         $zombie_no = $player_no - $player_count + 1;
+    //         $player_id = $zombie_id_start + $player_no;
+    //         $zombie = array(
+    //             "player_name" => "Zombie #$zombie_no",
+    //             "player_no" => $player_no + 1,
+    //             "is_zombie" => 1,
+    //             "player_table_order" => $player_no + 1,
+    //             "player_canal" => '',
+    //             "player_avatar" => ''
+    //         );
 
-            $players[$player_id] = $zombie;
-        }
+    //         $players[$player_id] = $zombie;
+    //     }
 
-        return $players;
-    }
+    //     return $players;
+    // }
 
     protected function getInitialPlayerOrder($players) {
         // Retrieve inital player order ([0=>playerId1, 1=>playerId2, ...])
@@ -324,11 +332,62 @@ class MinnesotaWhist extends Table
         $cards = array();
         foreach($this->suits as $suit_id => $suit) {
             for($value = 2; $value <= 14; $value++) {
-                $cards [] = array('type' => $suit_id, 'type_arg' => $value, 'nbr' => 1);
+                $cards [] = array('type' => $suit_id, 'type_arg' => $value, 'nbr' => 1, 'selected' => false);
             }
         }
 
         $this->cards->createCards($cards, 'deck');
+    }
+
+    public function getCardFromHand($player_id, $card_id) {
+        $currentCard = $this->cards->getCard($card_id);
+
+        if ($currentCard['location'] != 'hand' || $currentCard['location_arg'] != $player_id) {
+            throw new feException("That card is not in your hand.");
+        }
+
+        return $currentCard;
+    }
+
+    public function selectCardForPlayer($player_id, $card_id) {
+        $card = self::getCardFromHand($player_id, $card_id);
+
+        self::clearSelectedCardForPlayer($player_id);
+
+        $sql = "UPDATE card set card_selected = true WHERE card_location='hand' AND card_location_arg='$player_id' and card_id='$card_id'";
+        self::DbQuery($sql);
+    }
+
+    public function clearSelectedCardForPlayer($player_id)
+    {
+        $sql = "UPDATE card set card_selected = false WHERE card_location='hand' AND card_location_arg='$player_id'";
+        self::DbQuery($sql);
+    }
+
+    public function getSelectedCard($player_id) {
+        $sql = "SELECT card_id FROM card WHERE card_location='hand' AND card_location_arg='$player_id' and card_selected = true";
+        return self::getUniqueValueFromDB( $sql );
+    }
+
+    public function getAllSelectedCards() {
+        $sql = "SELECT card_id id, card_location location, card_location_arg location_arg FROM card WHERE card_location='hand' and card_selected = true";
+        $selected_cards = self::getCollectionFromDb( $sql );
+        return $selected_cards;
+    }
+
+    public function clearAllSelectedCards() {
+        $sql = "UPDATE card set card_selected = false WHERE card_selected = true";
+        self::DbQuery($sql);
+    }
+
+    public function getAutoPlay($player_id) {
+        $sql = "SELECT player_autoplay_pref FROM player WHERE player_id='$player_id'";
+        return self::getUniqueValueFromDB( $sql );
+    }
+
+    public function setAutoPlay($player_id, $auto_play) {
+        $sql = "UPDATE player SET player_autoplay_pref='$auto_play' WHERE player_id='$player_id'";
+        return self::DbQuery( $sql );
     }
 
     protected function initializeDealer($players) {
@@ -377,7 +436,7 @@ class MinnesotaWhist extends Table
     public function getTeamLabels() {
         $current_player_id = self::getCurrentPlayerId();
 
-        $sql = "select player_team team from player where player_id=" . $current_player_id;
+        $sql = "SELECT player_team team FROM player WHERE player_id=" . $current_player_id;
         $current_team = self::getUniqueValueFromDB( $sql );
 
         if ($current_team == 1) {
@@ -425,6 +484,21 @@ class MinnesotaWhist extends Table
         return true;
     }
 
+    public function getValidCards($player_id) {
+        $currentTrickSuit = self::getGameStateValue('trickSuit');
+        $player_cards = $this->cards->getCardsInLocation("hand", $player_id);
+
+        $valid_cards = array();
+        $all_cards = array();
+        foreach($player_cards as $card_id => $card) {
+            if ($currentTrickSuit == 0 || $card['type'] == $currentTrickSuit) {
+                $valid_cards[] = $card_id;
+            }
+            $all_cards[] = $card_id;
+        }
+
+        return count($valid_cards) > 0 ? $valid_cards : $all_cards;
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
@@ -436,14 +510,10 @@ class MinnesotaWhist extends Table
     */
 
     function playCard($card_id) {
-        self::checkAction("playCard");
+        // self::checkAction("playCard");
         $player_id = self::getActivePlayerId();
 
-        $currentCard = $this->cards->getCard($card_id);
-
-        if ($currentCard['location'] != 'hand' || $currentCard['location_arg'] != $player_id) {
-            throw new feException("That card is not in your hand.");
-        }
+        $currentCard = self::getCardFromHand($player_id, $card_id);
 
         $currentTrickSuit = self::getGameStateValue('trickSuit');
         if ($currentTrickSuit == 0) {
@@ -464,7 +534,7 @@ class MinnesotaWhist extends Table
 
             if (!$valid_card) {
                 $suit_name = $this->suits[$currentTrickSuit]['name'];
-                throw new feException(self::_("You must play a $suit_name."), true);
+                throw new BgaUserException(self::_("You must play a $suit_name."), true);
             }
         }
 
@@ -484,7 +554,7 @@ class MinnesotaWhist extends Table
             )
         );
 
-        $this->gamestate->nextState('playCard');
+        $this->gamestate->nextState('nextPlayer');
     }
 
     function playBid($card_id) {
@@ -493,6 +563,10 @@ class MinnesotaWhist extends Table
         $player_id = self::getCurrentPlayerId();
 
         $card = $this->cards->getCard($card_id);
+        if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+            throw new feException("That card is not in your hand.");
+        }
+
         $bid_high = $card['type'] == self::SPADES || $card['type'] == self::CLUBS;
 
         if ($bid_high) {
@@ -502,11 +576,7 @@ class MinnesotaWhist extends Table
             self::IncStat(1, "low_bids", $player_id);
         }
 
-        if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
-            throw new feException("That card is not in your hand.");
-        }
-
-        $this->cards->moveCard($card_id, 'bidcards', $player_id);
+        self::selectCardForPlayer($player_id, $card_id);
 
         self::notifyAllPlayers("bidCard", clienttranslate('${player_name} has placed a bid.'), 
             array( 
@@ -514,19 +584,25 @@ class MinnesotaWhist extends Table
                 'player_name' => self::getCurrentPlayerName(),
             )
         );
-
-        self::notifyPlayer($player_id, "removeCard", "", 
-            array(
-                'card_id' => $card_id
-            )
-        );
-
-        self::giveExtraTime($player_id);
         $this->gamestate->setPlayerNonMultiactive($player_id, "showBids");
+    }
+
+
+    function fixPriorBidStats($player_id, $prior_selected_card_id) {
+        $prior_selected_card = $this->cards->getCard($prior_selected_card_id);
+        $prior_bid_high = $prior_selected_card['type'] == self::SPADES || $prior_selected_card['type'] == self::CLUBS; 
+
+        if ($prior_bid_high) {
+            self::IncStat(-1, "high_bids", $player_id);
+        }
+        else {
+            self::IncStat(-1, "low_bids", $player_id);
+        }
     }
 
     function claimNoAceNoFace() {
         self::checkAction("claimNoAceNoFace");
+
         $player_id = self::getCurrentPlayerId();
 
         if (!$this->canClaimNoAceNoFace($player_id)) {
@@ -541,6 +617,81 @@ class MinnesotaWhist extends Table
             ));
 
         $this->gamestate->nextState('reshuffle');
+    } 
+
+    function selectCard($card_id) {
+        $this->gamestate->checkPossibleAction("selectCard");
+
+        $player_id = self::getCurrentPlayerId();
+        $card = $this->cards->getCard($card_id);
+        if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+            throw new feException("That card is not in your hand.");
+        }
+
+        $play_mode = $this->getGameStateValue("currentHandType");
+
+        if ($play_mode == self::BIDDING) {
+            $prior_selected_card_id = self::getSelectedCard($player_id);
+
+            if ($prior_selected_card_id) {
+                self::fixPriorBidStats($player_id, $prior_selected_card_id);
+            }
+            $bid_high = $card['type'] == self::SPADES || $card['type'] == self::CLUBS;
+
+            if ($bid_high) {
+                self::IncStat(1, "high_bids", $player_id);
+            }
+            else {
+                self::IncStat(1, "low_bids", $player_id);
+            }
+            self::selectCardForPlayer($player_id, $card_id);
+
+            self::notifyPlayer($player_id, 'changeBid', clienttranslate('You changed your bid.'), array());
+        }
+        else {
+            self::selectCardForPlayer($player_id, $card_id);
+        }
+    }
+
+    function clearSelection() {
+        $this->gamestate->checkPossibleAction("clearSelection");
+
+        $player_id = self::getCurrentPlayerId();
+
+        $prior_selected_card_id = self::getSelectedCard($player_id);
+
+        if (!$prior_selected_card_id) {
+            return;
+        }
+
+        $play_mode = $this->getGameStateValue("currentHandType");
+
+        if ($play_mode == self::BIDDING) {
+            $this->gamestate->setPlayersMultiactive(array($player_id), "playBid", false);
+
+            self::notifyAllPlayers("removeBid", clienttranslate('${player_name} has removed their bid.'), 
+                array( 
+                    'player_id' => $player_id,
+                    'player_name' => self::getCurrentPlayerName(),
+                )
+            );
+        }
+        else {
+            self::clearSelectedCardForPlayer($player_id);
+        }
+    }
+
+    public function updateAutoPlay($auto_play) {
+        $player_id = self::getCurrentPlayerId();
+        $current_auto_play = self::getAutoPlay($player_id);
+
+        $this->setAutoPlay($player_id, $auto_play);
+
+        $msg = $current_auto_play != $auto_play
+            ? clienttranslate("AutoPlay preference updated.")
+            : "";
+
+        self::notifyPlayer($player_id, "autoPlay", $msg, array());
     }
     
 //////////////////////////////////////////////////////////////////////////////
@@ -630,10 +781,9 @@ class MinnesotaWhist extends Table
 
         for($i = 0; $i < 4; $i++) {
             $check_player_id = $this->getPlayerAfter($check_player_id);
-            $player_bid_cards = $this->cards->getCardsInLocation('bidCards', $check_player_id);
-            $bid_card_id = array_keys($player_bid_cards)[0];
+            $bid_card_id = self::getSelectedCard($check_player_id);
             $this->cards->moveCard($bid_card_id, "cardsontable", $check_player_id);
-            $card = array_shift($player_bid_cards);
+            $card = $this->cards->getCard($bid_card_id);
             array_push($bid_cards, $card);
 
             $suit = $card['type'];
@@ -689,7 +839,7 @@ class MinnesotaWhist extends Table
             )
         );
         
-        $this->gamestate->nextState();
+        $this->gamestate->nextState("returnBids");
     }
 
     function stReturnBids() {
@@ -701,27 +851,20 @@ class MinnesotaWhist extends Table
             self::notifyPlayer($player_id, 'returnCard', "", array('bid_card' => $card));
         }
 
-        $bid_cards = $this->cards->getCardsInLocation('bidcards');
-        foreach($bid_cards as $card_id => $card) {
-            $player_id = $card['location_arg'];
-            $this->cards->moveCard($card_id, 'hand', $player_id);
-
-            self::notifyPlayer($player_id, 'returnCard', "", array('bid_card' => $card));
-        }
-
         self::notifyAllPlayers('clearBids', '', array());
+        self::clearAllSelectedCards();
 
         $this->gamestate->nextState();
     }
 
     function stNewTrick() {
         self::setGameStateValue('trickSuit', 0);
+
         $this->gamestate->nextState();
     }
 
     function stNextPlayer() {
         if ($this->cards->countCardInLocation('cardsontable') == 4) {
-
             $cards_on_table = $this->cards->getCardsInLocation('cardsontable');
             $best_value=0;
             $best_value_player_id = null; 
@@ -770,13 +913,51 @@ class MinnesotaWhist extends Table
         else {
             $player_id = self::activeNextPlayer();
             self::giveExtraTime($player_id);
-            $this->gamestate->nextState('nextPlayer');
+            $this->gamestate->nextState('preSelectCheck');
+
+        }
+    }
+
+    function stPreSelectCheck() {
+        $player_id = self::getActivePlayerId();
+        $player_selected_card_id = self::getSelectedCard($player_id);
+        $autoplay_card_id = null;
+        $player_autoplay_pref = self::getAutoPlay($player_id);
+
+        if ($player_selected_card_id) {
+            $autoplay_card_id = $player_selected_card_id;
+        }
+        else if ($player_autoplay_pref == self::AUTO_PLAY_ON) {
+            $valid_cards = $this->getValidCards($player_id);
+            if (count($valid_cards) == 1) {
+                $autoplay_card_id = $valid_cards[0];
+            }
+        }
+
+        if ($autoplay_card_id) {
+            try {
+                $this->playCard($autoplay_card_id);
+            }
+            catch(Exception $ex) {
+                $this->gamestate->nextState('playerTurn');
+                self::notifyPlayer($player_id, 'selectionError', clienttranslate('Your selected card could not be played'), array());
+            }
+        }
+        else {
+            $this->gamestate->nextState('playerTurn');
         }
     }
 
     function stEndHand() {
         $team1_tricks = $this->getGameStateValue("team1tricks");
         $team2_tricks = $this->getGameStateValue("team2tricks");
+        $team1_grand = "no";
+        $team2_grand = "no";
+        $team1_double_points = "no";
+        $team2_double_points = "no";
+        $team1_score = 0;
+        $team2_score = 0;
+
         $play_mode = $this->getGameStateValue("currentHandType");
         $grand_player_id = $this->getGameStateValue("grandPlayer");
 
@@ -795,17 +976,26 @@ class MinnesotaWhist extends Table
             $scoring_team = $team1_tricks > $team2_tricks ? 1 : 2;
             $losing_team = $scoring_team == 1 ? 2 : 1;
             $grand_team = $players[$grand_player_id]['player_team'];
+                
+            if ($grand_team == 1) $team1_grand = "yes";
+            if ($grand_team == 2) $team2_grand = "yes";
 
             // Double points if the team that granded did not take the points
             if ($grand_team != $scoring_team) {
                 $points *= 2;
                 $maxPoints *= 2;
                 self::IncStat(1, "failed_grand", $grand_player_id);
+
+                if ($scoring_team == 1) $team1_double_points = "yes";
+                if ($scoring_team == 2) $team2_double_points = "yes";
             }
             else {
                 self::IncStat(1, "succeed_grand", $grand_player_id);
             }
         }
+
+        if ($scoring_team == 1) $team1_score = $points;
+        if ($scoring_team == 2) $team2_score = $points;
 
         // Update game state scores
         $scoring_team_score_label = "team${scoring_team}score";
@@ -831,14 +1021,30 @@ class MinnesotaWhist extends Table
         $this->setGameStateValue("dealer", $next_dealer_id);
 
         $newScores = self::getCollectionFromDb("SELECT player_id, player_score FROM player", true);
+
+        self::clearAllSelectedCards();
         self::notifyAllPlayers("newScores", clienttranslate('Team ${scoring_team} scored ${points} points.'), 
             array(
                 'newScores' => $newScores,
                 'scoring_team' => $scoring_team,
                 'points' => $points,
-                'dealer_id' => $next_dealer_id
+                'dealer_id' => $next_dealer_id,
             )
         );
+
+        // Setup end of hand scoring dialog
+        $score_table = array(
+            array("Team", "Tricks", "Grand", "Double", "Score"),
+            array("Team 1", $team1_tricks, $team1_grand, $team1_double_points, $team1_score),
+            array("Team 2", $team2_tricks, $team2_grand, $team2_double_points, $team2_score)
+        );
+
+        self::notifyAllPlayers("tableWindow", '', array(
+            "id" => 'handScoring',
+            "title" => clienttranslate("Scoring for this hand."),
+            "table" => $score_table,
+            "closing" => clienttranslate("Close")
+        ));
 
         // Check if this is the end of the game
         if ($scoring_team_score >= 13) {
@@ -851,11 +1057,14 @@ class MinnesotaWhist extends Table
                 }
             }
 
+            $score_table_label = "Game score";
+
             $this->gamestate->nextState("endGame");
-            return;
         }
-        
-        $this->gamestate->nextState('nextHand');
+        else {
+            $this->gamestate->nextState('nextHand');
+
+        }
     }
 
 
@@ -898,7 +1107,7 @@ class MinnesotaWhist extends Table
         $bid_card_id = $this->zombieChooseBidCard($active_player);
         $card = $this->cards->getCard($bid_card_id);
 
-        $this->cards->moveCard($bid_card_id, 'bidcards', $active_player);
+        self::selectCardForPlayer($active_player, $bid_card_id);
 
         self::notifyAllPlayers("bidCard", clienttranslate('${player_name} has placed a bid.'), 
             array( 
@@ -1154,13 +1363,13 @@ class MinnesotaWhist extends Table
         // $from_version is equal to 1404301345
         
         // Example:
-//        if( $from_version <= 1404301345 )
-//        {
-//            // ! important ! Use DBPREFIX_<table_name> for all tables
-//
-//            $sql = "ALTER TABLE DBPREFIX_xxxxxxx ....";
-//            self::applyDbUpgradeToAllDB( $sql );
-//        }
+       if( $from_version <= 2109200323 )
+       {
+           // ! important ! Use DBPREFIX_<table_name> for all tables
+
+           $sql = "ALTER TABLE DBPREFIX_card add `card_selected` bit not null default 0";
+           self::applyDbUpgradeToAllDB( $sql );
+       }
 //        if( $from_version <= 1405061421 )
 //        {
 //            // ! important ! Use DBPREFIX_<table_name> for all tables

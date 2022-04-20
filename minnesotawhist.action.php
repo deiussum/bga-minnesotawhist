@@ -81,6 +81,25 @@
       self::ajaxResponse();
     }
 
+    public function selectCard() {
+      self::setAjaxMode();
+      $card_id = self::getArg("id", AT_posint, true);
+      $this->game->selectCard($card_id);
+      self::ajaxResponse();
+    }
+
+    public function clearSelection() {
+      self::setAjaxMode();
+      $this->game->clearSelection();
+      self::ajaxResponse();
+    }
+    
+    public function updateAutoPlay() {
+      self::setAjaxMode();
+      $auto_play = self::getArg("auto_play", AT_posint, true);
+      $this->game->updateAutoPlay($auto_play);
+      self::ajaxResponse();
+    }
   }
   
 

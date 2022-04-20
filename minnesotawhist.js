@@ -103,10 +103,11 @@ function (dojo, declare) {
             this.playerHand.centerItems = true;
             this.playerHand.extraClasses = 'card';
             this.playerHand.setOverlap(60, 0);
+            this.playerHand.setSelectionMode(1);
+            this.playerHand.setSelectionAppearance('class');
             this.playerHand.onItemCreate = dojo.hitch(this, 'setupNewCard');
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
-
 
             for(var suit=1; suit <= 4; suit++) {
                 for(var value=2; value <= 14; value++) {
@@ -120,6 +121,14 @@ function (dojo, declare) {
                 var suit = card.type;
                 var value = card.type_arg;
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
+            }
+
+            if (gamedatas.selected_card_id) {
+                console.log('selected card id: ' + gamedatas.selected_card_id);
+                this.playerHand.selectItem(gamedatas.selected_card_id);
+            }
+            else {
+                console.log('no selected card');
             }
 
             for(var i in this.gamedatas.cardsontable) {
@@ -166,10 +175,30 @@ function (dojo, declare) {
 
             console.log('no ace, no face: ' + this.gamedatas.noace_noface);
             this.canClaimNoAceNoFace = this.gamedatas.noace_noface;
-            if (this.gamedatas.noace_noface == true) {
-            }
 
+            this.initPreferencesObserver();
             console.log( "Ending game setup" );
+        },
+
+        initPreferencesObserver() {
+            dojo.query('.preference_control').on('change', (e) => {
+                const match = e.target.id.match(/^preference_[cf]ontrol_(\d+)$/);
+                if (!match) return;
+
+                const pref = match[1];
+                const newValue = e.target.value;
+                this.prefs[pref].value = newValue;
+                this.onPreferenceChange(pref, newValue);
+            });
+
+            this.onPreferenceChange(101, this.prefs[101].value);
+            console.log('AutoPlay preference:' + this.prefs[101].value);
+        },
+        onPreferenceChange(prefId, prefValue) {
+            prefId = parseInt(prefId);
+            if (prefId == 101) {
+                this.updateAutoPlay(prefValue);
+            }
         },
 
 
@@ -357,6 +386,10 @@ function (dojo, declare) {
             this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
         },
 
+        removeCardFromTable: function(player_id) {
+            dojo.destroy('cardontable_' + player_id);
+        },
+
         updatePlayMode: function(handType, handTypeText) {
             console.log("Hand type:" + handTypeText);
             var node = dojo.byId('playmode');
@@ -469,6 +502,17 @@ function (dojo, declare) {
             dojo.query('.stockitem').addClass('disabled');
         },
 
+        updateAutoPlay: function(autoPlayValue) {
+            console.log('on updateAutoPlay ' + autoPlayValue);
+
+            this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/updateAutoPlay.html", {
+                auto_play: autoPlayValue
+            },this
+            , function(result) { }
+            , function(is_error) { }
+            );
+        },
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -486,36 +530,43 @@ function (dojo, declare) {
             var items = this.playerHand.getSelectedItems();
 
             if (items.length > 0) {
-                var action = 'playCard';
-                if (this.checkAction(action, true)) {
-                    var card_id = items[0].id;
-                    console.log('on playCard ' + card_id);
+                var card_id = items[0].id;
+                var actions = ['playBid', 'playCard'];
+                var action = '';
 
-                    this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/" + action + ".html", {
-                        id: card_id,
-                        lock: true
-                    },this
-                    , function(result) { }
-                    , function(is_error) { }
-                    );
+                for(var i=0;i<actions.length;i++)
+                {
+                    if (this.checkAction(actions[i], false)) action = actions[i];
+                }
 
-                    this.playerHand.unselectAll();
-                }
-                else if (this.checkAction('playBid')) {
-                    var card_id = items[0].id;
-                    console.log('on playCard ' + card_id);
+                // Don't check the selectCard action as it can be done outside of the normal turn
+                // to change bid/pre-select card.
+                if (action === '') action = 'selectCard';
 
-                    this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/playBid.html", {
-                        id: card_id,
-                        lock: true
-                    },this
-                    , function(result) { }
-                    , function(is_error) { }
-                    );
-                }
-                else {
-                    this.playerHand.unselectAll();
-                }
+                console.log('on ' +action + ' ' + card_id);
+
+                this.ajaxcall("/" + this.game_name + "/" + this.game_name + "/" + action + ".html", {
+                    id: card_id
+                },this
+                , function(result) { }
+                , function(is_error) { }
+                );
+            }
+            else {
+                var that = this;
+                // Delay this a bit as it gets called even when immediately selecting a different card
+                // which causes a race condition.  Only send if there is truly nothing selected.
+                window.setTimeout(function() {
+                    console.log('on clearSelection ');
+
+                    if (that.playerHand.getSelectedItems().length === 0) {
+                        that.ajaxcall("/" + that.game_name + "/" + that.game_name + "/clearSelection.html", {
+                        },that
+                        , function(result) { }
+                        , function(is_error) { }
+                        );
+                    }
+                }, 250);
             }
         },
         onWindowResize: function() {
@@ -563,6 +614,7 @@ function (dojo, declare) {
             dojo.subscribe('newScores', this, "notif_newScores");
 
             dojo.subscribe('bidCard', this, "notif_bidCard");
+            dojo.subscribe('removeBid', this, "notif_removeBid");
             dojo.subscribe('bidsShown', this, "notif_bidsShown");
             this.notifqueue.setSynchronous('bidsShown', 1000);
 
@@ -570,6 +622,7 @@ function (dojo, declare) {
             dojo.subscribe('clearBids', this, "notif_clearBids");
             dojo.subscribe('returnCard', this, "notif_returnCard");
             dojo.subscribe('noAceNoFaceClaimed', this, 'notif_noAceNoFaceClaimed');
+            dojo.subscribe('selectionError', this, 'notif_selectionError');
         },  
         
         // from this point and below, you can write your game notifications handling methods
@@ -584,6 +637,7 @@ function (dojo, declare) {
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
             }
             this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
+            this.playerHand.unselectAll();
 
             this.canClaimNoAceNoFace = notif.args.noace_noface;
         },
@@ -593,6 +647,13 @@ function (dojo, declare) {
             if (this.haveCardOnTable()) {
                 this.disableAllCards();
             }
+        },
+
+        notif_removeBid: function(notif) {
+            if (notif.args.player_id == this.player_id) {
+                this.enableAllCards();
+            }
+            this.removeCardFromTable(notif.args.player_id);
         },
 
         notif_removeCard: function(notif) {
@@ -620,6 +681,7 @@ function (dojo, declare) {
                 });
                 anim.play();
             }
+            this.playerHand.unselectAll();
         },
         notif_noAceNoFaceClaimed: function(notif) {
             var cardsOnTable = dojo.query('.cardontable');
@@ -700,6 +762,10 @@ function (dojo, declare) {
             var dealer_id = notif.args.dealer_id;
             this.updateDealerIcon(dealer_id);
             this.updateGrandIcon(0);
+        },
+
+        notif_selectionError: function(notif) {
+            this.playerHand.unselectAll();
         }
    });             
 });
