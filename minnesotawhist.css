@@ -71,6 +71,9 @@
     1080p   - 134 x 183
     Small   - 70 x 96
 */
+.whiteblock {
+    background-color: #FFFFFF77;
+}
 .playertablecard {
     display: inline-block;
     position: relative;
