@@ -178,7 +178,6 @@ class MinnesotaWhist extends Table
         $result['selected_card_id'] = self::getSelectedCard($current_player_id);
 
         $result['hand_type'] = $this->getGameStateValue("currentHandType");
-        $result['hand_type_text'] = $this->getHandTypeText();
 
         $bids = array();
 
@@ -457,18 +456,6 @@ class MinnesotaWhist extends Table
                 "team2label" => "Team 2"
             );
         }
-    }
-
-    public function getHandTypeText() {
-        $hand_type = self::getGameStateValue("currentHandType");
-         
-        $messages = array(
-            0 => "Bidding", // NOI18N
-            1 => "Playing Low", // NOI18N
-            2 => "Playing High" // NOI18N
-        );
-
-        return $messages[$hand_type];
     }
 
     public function canClaimNoAceNoFace($player_id) {
@@ -760,7 +747,6 @@ class MinnesotaWhist extends Table
             self::notifyPlayer($player_id, 'newHand', '', array(
                 'cards' => $cards,
                 'hand_type' => self::BIDDING,
-                'hand_type_text' => $this->getHandTypeText(),
                 'noace_noface' => $this->canClaimNoAceNoFace($player_id)
             ));
         }
@@ -834,7 +820,6 @@ class MinnesotaWhist extends Table
                 'bid_cards' => $bid_cards,
                 'player_name' => $player_name,
                 'hand_type' => $play_mode,
-                'hand_type_text' => $this->getHandTypeText(),
                 'grand_player_id' => $grand_player_id,
             )
         );
@@ -988,6 +973,13 @@ class MinnesotaWhist extends Table
 
                 if ($scoring_team == 1) $team1_double_points = "yes";
                 if ($scoring_team == 2) $team2_double_points = "yes";
+
+                self::notifyAllPlayers("failedBid", clienttranslate('Team ${grand_team} bid high and failed to take enough tricks. Team ${scoring_team} points will be doubled.'), 
+                    array(
+                        'scoring_team' => $scoring_team,
+                        'grand_team' => $grand_team,
+                    )
+                );
             }
             else {
                 self::IncStat(1, "succeed_grand", $grand_player_id);

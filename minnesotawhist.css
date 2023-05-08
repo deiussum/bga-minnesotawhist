@@ -145,7 +145,7 @@
     width: 70px !important;
     height: 96px !important;
     background-size: 1050px 384px;
-    border: 1px solid lightgray !important;
+    border: 1px solid lightgray;
     border-radius: 5px;
     background-image: url('img/cards_traditional_classic.jpg');
 }
@@ -172,6 +172,10 @@
 
 .stockitem.card:hover, .stockitem.card.stockitem_selected {
     margin-top: -2%;
+}
+
+.stockitem.card.stockitem_selected {
+    border-color: 1px red !important;
 }
 
 #myhand-wrap {

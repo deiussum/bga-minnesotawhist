@@ -161,7 +161,7 @@ function (dojo, declare) {
             this.addIconToTeamTricks(2, this.gamedatas.team2tricks);
             //this.addIconToTeamTricks(2, 13); // Test full trick display
 
-            this.updatePlayMode(this.gamedatas.hand_type, this.gamedatas.hand_type_text);
+            this.updatePlayMode(this.gamedatas.hand_type);
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -327,10 +327,10 @@ function (dojo, declare) {
 
         getSuitName: function(suit) {
             switch(Number(suit)) {
-                case 1: return 'spades';
-                case 2: return 'hearts';
-                case 3: return 'clubs';
-                case 4: return 'diamonds';
+                case 1: return _('spades');
+                case 2: return _('hearts');
+                case 3: return _('clubs');
+                case 4: return _('diamonds');
             }
         },
        
@@ -390,16 +390,46 @@ function (dojo, declare) {
             dojo.destroy('cardontable_' + player_id);
         },
 
-        updatePlayMode: function(handType, handTypeText) {
+        updatePlayMode: function(handType) {
+            var handTypeText = this.getHandTypeText(handType);
+            var instructions = this.getInstructions(handType);
             console.log("Hand type:" + handTypeText);
+
             var node = dojo.byId('playmode');
             node.innerText = handTypeText;
+
+            var wrapper = dojo.byId('playmode-wrap')
+            wrapper.setAttribute('title', instructions);
 
             if (handType == 1) {
                 node.classList.add('red-text');
             }
             else {
                 node.classList.remove('red-text');
+            }
+        },
+
+        getHandTypeText: function(handType) {
+            switch(Number(handType)) {
+                case 0:
+                    return _('Bidding');
+                case 1:
+                    return _('Playing Low');
+                case 2:
+                    return _('Playing High');
+                default:
+                    return _('Unknown hand type: ' + handType)
+            }
+        },
+
+        getInstructions: function(handType) {
+            switch(Number(handType)) {
+                case 0:
+                    return _('If you have a hand that you think you can take a lot of tricks, you may want to bid high by playing a low black card.  If you do not think you can take many tricks, you can bid low by playing a low red card.');
+                case 1:
+                    return _('You are currently playing low.  You want to avoid taking tricks this hand.');
+                case 2:
+                    return _('You are currently playing high.  You want to try and take tricks this hand.');
             }
         },
 
@@ -636,7 +666,7 @@ function (dojo, declare) {
                 var value = card.type_arg;
                 this.playerHand.addToStockWithId(this.getCardUniqueType(suit, value), card.id);
             }
-            this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
+            this.updatePlayMode(notif.args.hand_type);
             this.playerHand.unselectAll();
 
             this.canClaimNoAceNoFace = notif.args.noace_noface;
@@ -668,7 +698,7 @@ function (dojo, declare) {
                 var player_id = card.location_arg;
                 this.showFlippedCard(player_id, suit, value, card.id);
             }
-            this.updatePlayMode(notif.args.hand_type, notif.args.hand_type_text);
+            this.updatePlayMode(notif.args.hand_type);
             this.updateGrandIcon(notif.args.grand_player_id);
             this.enableAllCards();
         },

@@ -16,7 +16,7 @@
     <div id="team1-info-box" class="team-info-box whiteblock {TEAM1CLASS}">
         <h3>{TEAM1LABEL} (Team 1)</h3>
         <div>
-            Score: <span id="team1-score">{TEAM1SCORE}</span>
+            Score: <span id="team1-score">{TEAM1SCORE}</span> of 13
         </div>
         <div>
             Tricks: <span id="team1-tricks">{TEAM1TRICKS}</span>
@@ -27,7 +27,7 @@
     <div id="team2-info-box" class="team-info-box whiteblock {TEAM2CLASS}">
         <h3>{TEAM2LABEL} (Team 2)</h3>
         <div>
-            Score: <span id="team2-score">{TEAM2SCORE}</span>
+            Score: <span id="team2-score">{TEAM2SCORE}</span> of 13
         </div>
         <div>
             Tricks: <span id="team2-tricks">{TEAM2TRICKS}</span>
